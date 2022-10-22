@@ -48,7 +48,12 @@ COMPOSTNET.mkdir(parents=True, exist_ok=True)
 # Model's config paths
 # =============================================================================
 
-MODELS_DIR = ROOT / Path('config') / Path('models')
+CONFIG_DIR = ROOT / Path('config')
+
+MODELS_DIR = CONFIG_DIR / Path('models')
+PSEUDOLABELLING_DIR = CONFIG_DIR / Path('pseudo-labelling')
+
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 # -----------------------------------------------------------------------------

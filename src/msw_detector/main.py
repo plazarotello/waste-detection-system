@@ -19,6 +19,7 @@ from . import trainer
 
 def configure(name: str, config: Union[Path, str]):
     config = Path(config)
+    chk_dir = config.parent.resolve()
     with open(config, 'r') as f:
         config = json.load(f)
     
@@ -32,7 +33,7 @@ def configure(name: str, config: Union[Path, str]):
     weight_decay = config['weight_decay']
 
     bs = config['batch_size']
-    checkpoint_dir = Path(config['checkpoints']) / name
+    checkpoint_dir = chk_dir / name
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_dir = str(checkpoint_dir)
 
