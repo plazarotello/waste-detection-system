@@ -13,8 +13,8 @@ import numpy as np
 
 import torch
 
-from msw_detector import models
-from msw_detector import trainer
+from . import models
+from . import trainer
 
 
 def configure(name: str, config: Union[Path, str]):

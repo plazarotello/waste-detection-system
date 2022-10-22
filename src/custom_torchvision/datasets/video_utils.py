@@ -5,7 +5,7 @@ from fractions import Fraction
 from typing import Any, Dict, List, Optional, Callable, Union, Tuple, TypeVar, cast
 
 import torch
-from custom_torchvision.io import (
+from ..io import (
     _probe_video_from_file,
     _read_video_from_file,
     read_video,

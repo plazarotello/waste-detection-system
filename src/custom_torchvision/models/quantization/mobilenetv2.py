@@ -4,7 +4,7 @@ from typing import Any, Optional, Union
 from torch import Tensor
 from torch import nn
 from torch.ao.quantization import QuantStub, DeQuantStub
-from custom_torchvision.models.mobilenetv2 import InvertedResidual, MobileNetV2, MobileNet_V2_Weights
+from ...models.mobilenetv2 import InvertedResidual, MobileNetV2, MobileNet_V2_Weights
 
 from ...ops.misc import Conv2dNormActivation
 from ...transforms._presets import ImageClassification

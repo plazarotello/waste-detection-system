@@ -11,12 +11,12 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 
 import torch
-from msw_detector.models import AVAILABLE_MODELS
+from .models import AVAILABLE_MODELS
 
-from msw_detector import shared_data as base
-from msw_detector import utils as ann_utils
-from msw_detector import trainer
-from msw_detector import main
+from . import shared_data as base
+from . import utils as ann_utils
+from . import trainer
+from . import main
 
 # -----------------------------------------------------------------------------
 # YOLOv5 dataset formatting with YOLO annotations

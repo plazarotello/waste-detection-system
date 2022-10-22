@@ -2,7 +2,7 @@ from collections import OrderedDict
 from typing import Any, Callable, Optional
 
 from torch import nn
-from custom_torchvision.ops import MultiScaleRoIAlign
+from ...ops import MultiScaleRoIAlign
 
 from ...ops import misc as misc_nn_ops
 from ...transforms._presets import ObjectDetection

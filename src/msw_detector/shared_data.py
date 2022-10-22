@@ -7,7 +7,7 @@ SEED = 11
 IMG_WIDTH = 640
 IMG_HEIGHT = 640
 
-ROOT = Path('../..')
+ROOT = Path('.')
 RESULTS = ROOT / Path('results')
 
 # -----------------------------------------------------------------------------

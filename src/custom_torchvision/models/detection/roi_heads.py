@@ -2,9 +2,9 @@ from typing import Optional, List, Dict, Tuple
 
 import torch
 import torch.nn.functional as F
-import custom_torchvision
+import src.custom_torchvision as custom_torchvision
 from torch import nn, Tensor
-from custom_torchvision.ops import boxes as box_ops, roi_align
+from ...ops import boxes as box_ops, roi_align
 
 from . import _utils as det_utils
 

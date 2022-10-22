@@ -1,9 +1,9 @@
 from typing import Tuple
 
 import torch
-import custom_torchvision
+import src.custom_torchvision
 from torch import Tensor
-from custom_torchvision.extension import _assert_has_ops
+from ..extension import _assert_has_ops
 
 from ..utils import _log_api_usage_once
 from ._box_convert import _box_cxcywh_to_xyxy, _box_xyxy_to_cxcywh, _box_xywh_to_xyxy, _box_xyxy_to_xywh
@@ -69,7 +69,7 @@ def batched_nms(
         _log_api_usage_once(batched_nms)
     # Benchmarks that drove the following thresholds are at
     # https://github.com/pytorch/vision/issues/1311#issuecomment-781329339
-    if boxes.numel() > (4000 if boxes.device.type == "cpu" else 20000) and not custom_torchvision._is_tracing():
+    if boxes.numel() > (4000 if boxes.device.type == "cpu" else 20000) and not src.custom_torchvision._is_tracing():
         return _batched_nms_vanilla(boxes, scores, idxs, iou_threshold)
     else:
         return _batched_nms_coordinate_trick(boxes, scores, idxs, iou_threshold)
@@ -152,7 +152,7 @@ def clip_boxes_to_image(boxes: Tensor, size: Tuple[int, int]) -> Tensor:
     boxes_y = boxes[..., 1::2]
     height, width = size
 
-    if custom_torchvision._is_tracing():
+    if src.custom_torchvision._is_tracing():
         boxes_x = torch.max(boxes_x, torch.tensor(0, dtype=boxes.dtype, device=boxes.device))
         boxes_x = torch.min(boxes_x, torch.tensor(width, dtype=boxes.dtype, device=boxes.device))
         boxes_y = torch.max(boxes_y, torch.tensor(0, dtype=boxes.dtype, device=boxes.device))

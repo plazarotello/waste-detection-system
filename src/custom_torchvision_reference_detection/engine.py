@@ -3,10 +3,10 @@ import sys
 import time, datetime
 
 import torch
-import custom_torchvision.models.detection.mask_rcnn
-from custom_torchvision_reference_detection import utils, coco_eval, coco_utils
-from custom_ultralytics_yolov5.utils import loss
-from custom_ultralytics_yolov5.models import yolo
+from ..custom_torchvision.models.detection import MaskRCNN, KeypointRCNN
+from ..custom_torchvision_reference_detection import utils, coco_eval, coco_utils
+from ..custom_ultralytics_yolov5.utils import loss
+from ..custom_ultralytics_yolov5.models import yolo
 
 
 def simple_train_one_epoch(model, optimizer, lr_scheduler, data_loader, device, epoch, verbose=True):
@@ -127,9 +127,9 @@ def _get_iou_types(model):
     if isinstance(model, torch.nn.parallel.DistributedDataParallel):
         model_without_ddp = model.module
     iou_types = ["bbox"]
-    if isinstance(model_without_ddp, custom_torchvision.models.detection.MaskRCNN):
+    if isinstance(model_without_ddp, MaskRCNN):
         iou_types.append("segm")
-    if isinstance(model_without_ddp, custom_torchvision.models.detection.KeypointRCNN):
+    if isinstance(model_without_ddp, KeypointRCNN):
         iou_types.append("keypoints")
     return iou_types
 

@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Union
 import torch
 import torch.nn as nn
 from torch import Tensor
-from custom_torchvision.models import shufflenetv2
+from ...models import shufflenetv2
 
 from ...transforms._presets import ImageClassification
 from .._api import WeightsEnum, Weights

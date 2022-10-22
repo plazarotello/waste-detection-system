@@ -3,9 +3,9 @@ from typing import Optional, List, Dict, Tuple, Union
 
 import torch
 import torch.fx
-import custom_torchvision
+import src.custom_torchvision as custom_torchvision
 from torch import nn, Tensor
-from custom_torchvision.ops.boxes import box_area
+from ..ops.boxes import box_area
 
 from ..utils import _log_api_usage_once
 from .roi_align import roi_align

@@ -2,7 +2,7 @@ import math
 from typing import List, Tuple, Dict, Optional, Any
 
 import torch
-import custom_torchvision
+import src.custom_torchvision as custom_torchvision
 from torch import nn, Tensor
 
 from .image_list import ImageList

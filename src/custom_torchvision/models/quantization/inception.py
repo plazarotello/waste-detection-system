@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from custom_torchvision.models import inception as inception_module
-from custom_torchvision.models.inception import InceptionOutputs, Inception_V3_Weights
+from ...models import inception as inception_module
+from ...models.inception import InceptionOutputs, Inception_V3_Weights
 
 from ...transforms._presets import ImageClassification
 from .._api import WeightsEnum, Weights

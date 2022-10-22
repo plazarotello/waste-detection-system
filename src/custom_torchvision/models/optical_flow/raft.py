@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn.modules.batchnorm import BatchNorm2d
 from torch.nn.modules.instancenorm import InstanceNorm2d
-from custom_torchvision.ops import Conv2dNormActivation
+from ...ops import Conv2dNormActivation
 
 from ...transforms._presets import OpticalFlow
 from ...utils import _log_api_usage_once

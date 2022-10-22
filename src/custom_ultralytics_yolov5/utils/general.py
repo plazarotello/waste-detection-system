@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 import pkg_resources as pkg
 import torch
-import custom_torchvision
+import src.custom_torchvision as custom_torchvision
 import yaml
 
 from .downloads import gsutil_getsize

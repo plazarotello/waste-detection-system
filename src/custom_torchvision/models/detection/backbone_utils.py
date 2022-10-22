@@ -2,8 +2,8 @@ import warnings
 from typing import Callable, Dict, List, Optional, Union
 
 from torch import nn, Tensor
-from custom_torchvision.ops import misc as misc_nn_ops
-from custom_torchvision.ops.feature_pyramid_network import ExtraFPNBlock, FeaturePyramidNetwork, LastLevelMaxPool
+from ...ops import misc as misc_nn_ops
+from ...ops.feature_pyramid_network import ExtraFPNBlock, FeaturePyramidNetwork, LastLevelMaxPool
 
 from .. import mobilenet, resnet
 from .._api import WeightsEnum, _get_enum_from_fn

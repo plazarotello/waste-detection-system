@@ -4,7 +4,7 @@ from typing import Any, Type, Union, List, Optional
 import torch
 import torch.nn as nn
 from torch import Tensor
-from custom_torchvision.models.resnet import (
+from ...models.resnet import (
     Bottleneck,
     BasicBlock,
     ResNet,

@@ -2,12 +2,12 @@ import os
 import warnings
 
 import torch
-from custom_torchvision import datasets
-from custom_torchvision import io
-from custom_torchvision import models
-from custom_torchvision import ops
-from custom_torchvision import transforms
-from custom_torchvision import utils
+from . import datasets
+from . import io
+from . import models
+from . import ops
+from . import transforms
+from . import utils
 
 from .extension import _HAS_OPS
 
