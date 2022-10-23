@@ -5,8 +5,8 @@ import torch
 import torch.utils.data
 from .. import custom_torchvision
 from ..custom_torchvision import transforms as T
-from ..pycocotools import mask as coco_mask
-from ..pycocotools.coco import COCO
+from pycocotools import mask as coco_mask
+from pycocotools.coco import COCO
 
 
 class FilterAndRemapCocoCategories:

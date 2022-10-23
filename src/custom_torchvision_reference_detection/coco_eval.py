@@ -3,11 +3,11 @@ import io
 from contextlib import redirect_stdout
 
 import numpy as np
-from ..pycocotools import mask as mask_util
+from pycocotools import mask as mask_util
 import torch
 from . import utils
-from ..pycocotools.coco import COCO
-from ..pycocotools.cocoeval import COCOeval
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
 
 
 class CocoEvaluator:

@@ -91,7 +91,7 @@ with open(base.TRASHBOX_METAL_CSV, 'w', encoding='utf-8-sig') as f:
 
 labelled_metals = dataset_creator.pseudolabel_df(metals, unlabelled_metal_images,
                         'metal-pseudolabeller', 
-                        config=Path('pseudo-labelling')/'trashbox-metal_config.json', 
+                        config=base.PSEUDOLABELLING_DIR/'trashbox-metal_config.json', 
                         resume=False, binary_classification=True)
 
 dataset_creator.plot_results('metal-pseudolabeller')
