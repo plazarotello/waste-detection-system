@@ -3,7 +3,7 @@
 from enum import Enum
 
 import torch
-from ..custom_torchvision.models.detection import fasterrcnn_resnet50_fpn_v2, fcos_resnet50_fpn, \
+from .custom_torchvision.models.detection import fasterrcnn_resnet50_fpn_v2, fcos_resnet50_fpn, \
     retinanet_resnet50_fpn_v2, ssd300_vgg16
 
 

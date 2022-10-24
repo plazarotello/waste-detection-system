@@ -17,7 +17,7 @@ import random
 import itertools
 import json
 
-from src.msw_detector import shared_data as base, utils, dataset_creator
+from src import shared_data as base, utils, dataset_creator
 
 
 # plot style

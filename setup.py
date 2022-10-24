@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-import src.msw_detector as msw_detector
+import src as msw_detector
 from pip._internal.req import parse_requirements
 
 install_reqs = parse_requirements('requirements.txt', session=False)
@@ -8,7 +8,6 @@ reqs = [str(ir.requirement) for ir in install_reqs]
 setup(
     name='msw-detector',
     version=msw_detector.__version__,
-    #packages=['msw_detector'],
     description='Municipal Solid Waste Detector over a conveyor belt',
     author='Patricia Lázaro Tello',
     author_email='patricia.lazarotello@gmail.com',
