@@ -123,15 +123,17 @@ def plot_data_sample(sample_imgs: pd.DataFrame, images_df: pd.DataFrame):
 
 # -----------------------------------------------------------------------------
 
-def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : bool = True) -> pd.Series:
-    base.MOD_DATASET.mkdir(parents=True, exist_ok=True)
+def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : bool = True, 
+                            final : bool = True) -> pd.Series:
+    base.COMP_DATASET.mkdir(parents=True, exist_ok=True)
+    base.FINAL_DATASET.mkdir(parents=True, exist_ok=True)
     current_path = Path(row.path)
     prefix = 'undefined'
     for path, _prefix in base.PREFIXES_CATS.items():
         if str(path) in str(current_path):
             prefix = _prefix
             break
-    new_path = base.MOD_DATASET/Path(f'{prefix}-{current_path.stem}.jpg')
+    new_path = (base.FINAL_DATASET if final else base.COMP_DATASET)/Path(f'{prefix}-{current_path.stem}.jpg')
     img = Image.open(current_path)
     img = img.convert('RGB')
     if resize:

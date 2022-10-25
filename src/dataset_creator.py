@@ -46,7 +46,7 @@ def get_path_test() -> Path:
     return base.YOLO_DATA_FOLDER/base.YOLO_DATA_TEST
 
 
-def create_yolo_structure(df_path: Path = base.DATA_CSV):
+def create_yolo_structure(df_path: Path = base.FINAL_DATA_CSV):
     with open(df_path, 'r', encoding='utf-8-sig') as f:
         df = pd.read_csv(f)
 

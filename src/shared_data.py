@@ -15,7 +15,8 @@ RESULTS = ROOT / Path('results')
 # =============================================================================
 
 RAW_ROOT = ROOT / Path('raw-datasets')
-MOD_DATASET = ROOT / Path('dataset')
+COMP_DATASET = ROOT / Path('complementary-dataset')
+FINAL_DATASET = ROOT / Path('dataset')
 
 CIG_BUTTS = RAW_ROOT / 'cig_butts'
 DRINKING_WASTE = RAW_ROOT / 'drinking-waste'
@@ -24,6 +25,7 @@ ZERO_WASTE = RAW_ROOT / 'zero-waste' / 'zerowaste-f'
 TRASHBOX_METAL = RAW_ROOT / 'Trashbox-metal'
 WASTE_CL = RAW_ROOT / 'WasteClassification'
 COMPOSTNET = RAW_ROOT / 'CompostNet'
+RESORTIT = RAW_ROOT / 'ResortIt'
 
 CIG_BUTTS_CSV = RAW_ROOT / 'cig-butts.csv'
 DRINKING_WASTE_CSV = RAW_ROOT / 'drinking-waste.csv'
@@ -32,10 +34,12 @@ ZERO_WASTE_CSV = RAW_ROOT / 'zerowaste.csv'
 TRASHBOX_METAL_CSV = RAW_ROOT / 'trashbox-metal.csv'
 WASTE_CL_CSV = RAW_ROOT / 'waste-cl.csv'
 COMPOSTNET_CSV = RAW_ROOT / 'compostnet.csv'
+RESORTIT_CSV = RAW_ROOT / 'resortit.csv'
 
 
 RAW_ROOT.mkdir(parents=True, exist_ok=True)
-MOD_DATASET.mkdir(parents=True, exist_ok=True)
+COMP_DATASET.mkdir(parents=True, exist_ok=True)
+FINAL_DATASET.mkdir(parents=True, exist_ok=True)
 CIG_BUTTS.mkdir(parents=True, exist_ok=True)
 DRINKING_WASTE.mkdir(parents=True, exist_ok=True)
 TACO.mkdir(parents=True, exist_ok=True)
@@ -70,7 +74,8 @@ YOLO_BEST_HYPER = ROOT / 'yolov5-hyper.yaml'
 # Data paths
 # =============================================================================
 
-DATA_CSV = RESULTS / 'dataset.csv'
+FINAL_DATA_CSV = RESULTS / 'final-dataset.csv'
+COMP_DATA_CSV = RESULTS / 'complementary-dataset.csv'
 
 YOLO_CONFIG = MODELS_DIR / 'YOLO-cfg'
 
