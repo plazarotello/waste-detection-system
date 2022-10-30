@@ -183,6 +183,11 @@ RELATION_CATS = {
     'rigid_plastic'.upper(): CATS_PLASTICO,
     'metal'.upper(): CATS_METAL,
 
+    'Alu'.upper(): CATS_METAL,
+    'Carton'.upper(): CATS_PAPEL,
+    'Nylon'.upper(): CATS_PLASTICO,
+    'Bottle'.upper(): CATS_PLASTICO,
+
     'Aluminium foil'.upper(): CATS_PLASTICO,
     'Battery'.upper(): CATS_OTROS,
     'Aluminium blister pack'.upper(): CATS_OTROS,

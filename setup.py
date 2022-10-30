@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
 import src as msw_detector
 from pip._internal.req import parse_requirements
+from pathlib import Path
 
-install_reqs = parse_requirements('requirements.txt', session=False)
+current_directory = Path(__file__).parent.resolve()
+install_reqs = parse_requirements(current_directory/'requirements.txt', session=False)
 reqs = [str(ir.requirement) for ir in install_reqs]
 
 setup(
@@ -11,8 +13,8 @@ setup(
     description='Municipal Solid Waste Detector over a conveyor belt',
     author='Patricia Lázaro Tello',
     author_email='patricia.lazarotello@gmail.com',
-    license='LICENSE',
-    long_description=open('README.md').read(),
+    license=str(current_directory/'LICENSE'),
+    long_description=open(str(current_directory/'README.md')).read(),
     install_requires=reqs,
     keywords=['municipal-solid-waste', 'waste-sorting', 'computer-vision', 
               'deep-learning', 'object-detection', 'image-recognition',
