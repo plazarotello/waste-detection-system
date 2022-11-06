@@ -8,7 +8,7 @@ with open("LICENSE") as f:
 setup(
    name='waste-detector-paper-plastic',
    version='0.1',
-   packages=['src'],
+   packages=['waste_detection_system'],
    long_description=readme,
    license=license,
    install_requires=[
