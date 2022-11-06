@@ -59,8 +59,6 @@ dependencies:
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/cu113
     - torch==1.12.0+cu113
-    - --extra-index-url https://download.pytorch.org/whl/cu113
-    - torchvision==0.13.0+cu113
     - adal==1.2.7
     - alembic==1.8.1
     - anyio==3.6.1

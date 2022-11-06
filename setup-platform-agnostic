@@ -1,8 +1,7 @@
-#!/bin/bash
 conda activate base
 conda deactivate
 conda env remove -n waste-detector
-conda env create --file unix-config.yaml
+conda env create --file {CONFIG_FILE}
 conda activate waste-detector
 python -m ipykernel install --user --name=waste-detector
 pip uninstall custom_torchvision custom_torchvision_reference_detection custom_ultralytics_yolov5

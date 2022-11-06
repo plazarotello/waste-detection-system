@@ -14,13 +14,13 @@ from sklearn.model_selection import train_test_split
 from PIL import Image
 
 import torch
-from . import custom_torchvision
-from .custom_torchvision import transforms
+import custom_torchvision
+from custom_torchvision import transforms
 
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
-from .custom_torchvision_reference_detection import utils, engine
+from custom_torchvision_reference_detection import utils, engine
 
 from . import shared_data as base
 

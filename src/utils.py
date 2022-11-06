@@ -9,9 +9,9 @@ import pandas as pd
 import numpy as np
 
 import torch
-from .custom_torchvision.transforms import functional as F
-from .custom_torchvision.io import read_image
-from .custom_torchvision.utils import draw_bounding_boxes
+from custom_torchvision.transforms import functional as F
+from custom_torchvision.io import read_image
+from custom_torchvision.utils import draw_bounding_boxes
 import matplotlib.pyplot as plt
 from PIL import Image
 import cv2
