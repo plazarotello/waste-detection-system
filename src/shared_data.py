@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+from shutil import rmtree
 from pathlib import Path
 
 SEED = 11
@@ -15,6 +15,7 @@ RESULTS = ROOT / Path('results')
 # =============================================================================
 
 RAW_ROOT = ROOT / Path('raw-datasets')
+CANDIDATE_DATASET = ROOT / Path('candidate-dataset')
 COMP_DATASET = ROOT / Path('complementary-dataset')
 FINAL_DATASET = ROOT / Path('dataset')
 
@@ -38,6 +39,8 @@ RESORTIT_CSV = RAW_ROOT / 'resortit.csv'
 
 
 RAW_ROOT.mkdir(parents=True, exist_ok=True)
+rmtree(CANDIDATE_DATASET, ignore_errors=True)
+CANDIDATE_DATASET.mkdir(parents=True, exist_ok=True)
 COMP_DATASET.mkdir(parents=True, exist_ok=True)
 FINAL_DATASET.mkdir(parents=True, exist_ok=True)
 CIG_BUTTS.mkdir(parents=True, exist_ok=True)

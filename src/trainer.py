@@ -18,7 +18,6 @@ from . import custom_torchvision
 from .custom_torchvision import transforms
 
 import torch.optim as optim
-from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from .custom_torchvision_reference_detection import utils, engine
@@ -53,7 +52,7 @@ class RecyclingDataset(torch.utils.data.Dataset):
 
 # -----------------------------------------------------------------------------
 
-def path_to_image(path, augment : bool = False):
+def path_to_image(path, augment : bool = False) -> torch.Tensor:
     t = transforms.Compose([transforms.ToTensor()])
     if augment:
         t = transforms.Compose([transforms.ToTensor(), transforms.RandomHorizontalFlip(p=0.25),
@@ -210,7 +209,7 @@ def plot_training_results(model_folder: Union[Path, str], figsize: tuple = (15, 
     fig, axes = plt.subplots(ncols=2, nrows=1, figsize=figsize, dpi=300)
     fig.suptitle('Gráficos de diagnóstico')
 
-    metrics_ax = (axes.flat)[0]
+    metrics_ax = axes.flat[0]
     metrics_ax.plot(epochs, mAP, label=f'mAP (validation)')
     metrics_ax.plot(epochs, mAR, label=f'mAR (validation)')
     metrics_ax.set(title='Métricas', xlabel='epoch',
@@ -218,7 +217,7 @@ def plot_training_results(model_folder: Union[Path, str], figsize: tuple = (15, 
     metrics_ax.set_ylim([0.0, 1.0])
     metrics_ax.legend(loc='upper right')
 
-    loss_ax = (axes.flat)[1]
+    loss_ax = axes.flat[1]
     loss_ax.plot(epochs, acc_loss['train'], label=f'loss (train)')
     loss_ax.plot(epochs, acc_loss['val'], label=f'loss (validation)')
     loss_ax.set(title='Loss plot', xlabel='epoch',
@@ -250,9 +249,9 @@ def choose_best_model(models_dir : str, base_model):
 # -----------------------------------------------------------------------------
 
 def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
-          lr_scheduler: lr_scheduler, epochs: int, output_dir: str,
-          device, augment : bool = False, resume: bool = True, 
-          binary_classification : bool = False, save : bool = True):
+        scheduler, epochs: int, output_dir: str, device, 
+        augment : bool = False, resume: bool = True, 
+        binary_classification : bool = False, save : bool = True):
     torch.cuda.empty_cache()
 
     model_without_ddp = model
@@ -275,7 +274,7 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
 
         model_without_ddp.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+        scheduler.load_state_dict(checkpoint['scheduler'])
         start_epoch = checkpoint['epoch'] + 1
         loss_train = checkpoint['train_results']
         acc_val = checkpoint['val_results']
@@ -287,12 +286,16 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
     if start_epoch >= epochs:
         return model
 
+    lr = get_lr(optimizer)
 
     start_time = time.time()
     # train for n epochs
     for epoch in range(start_epoch, epochs):
-        model, optimizer, lr_scheduler, loss = engine.simple_train_one_epoch(
-            model, optimizer, lr_scheduler, train_dataloader, device, epoch)
+        model, optimizer, loss = engine.simple_train_one_epoch(
+            model, optimizer, train_dataloader, device, epoch)
+        if scheduler is not None:
+            scheduler.step()
+            lr = scheduler.get_last_lr()
 
         loss_train.append(loss)
         val_results = evaluate(model, val_dataloader, device)
@@ -301,7 +304,7 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
         checkpoint = {
             'model': model_without_ddp.state_dict(),
             'optimizer': optimizer.state_dict(),
-            'lr_scheduler': lr_scheduler.state_dict(),
+            'scheduler': scheduler.state_dict(),
             'train_results': loss_train,
             'val_results': acc_val,
             'epoch': epoch,
@@ -310,7 +313,7 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
             utils.save_on_master(checkpoint, os.path.join(
                 output_dir, f'model_{epoch}.pth'))
 
-        print(f' LR:{lr_scheduler.get_last_lr()[0]:1.6} | Loss:{round(loss, 2):2.2}-{round(val_results[0], 2):2.2} | '
+        print(f' LR:{lr:1.6} | Loss:{round(loss, 2):2.2}-{round(val_results[0], 2):2.2} | '
             f'mAP:{round(val_results[1], 2):1.2} | mAR:{round(val_results[2], 2):1.2}')
 
     total_time = time.time() - start_time
@@ -318,3 +321,7 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
     print(f'Training time: {total_time_str}')
     return model, loss_train, acc_val
 # -----------------------------------------------------------------------------
+
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']

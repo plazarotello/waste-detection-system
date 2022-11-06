@@ -1,12 +1,12 @@
 {
-    "epochs": 25,
-    "lr": [0.01, 0.1, 0.5],
-    "lr_gamma": 0.25,
+    "epochs": 100,
+    "evolutions": 10,
+    "optimizer": ["SGD", "Adam"],
+    "scheduler": ["StepLR", "ReduceLROnPlateau"],
+    "scheduler_steps": [5, 10, 25, 50],
     "momentum": [0.5, 0.7, 0.9],
-    "lr_steps": [2, 5, 7, 10, 15, 20],
+    "lr": [0.01, 0.1, 0.5, 0.005, 0.00005],
+    "batch_size": [1, 2],
     "weight_decay": 0.001,
-    "batch_size": 2,
-    "data_augmentation": true,
-    "checkpoints": "./models/hyper-search",
-    "results": "./models/hyper-search"
+    "data_augmentation": true
 }

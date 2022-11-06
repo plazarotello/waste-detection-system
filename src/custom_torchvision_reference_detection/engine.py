@@ -9,7 +9,7 @@ from ..custom_ultralytics_yolov5.utils import loss
 from ..custom_ultralytics_yolov5.models import yolo
 
 
-def simple_train_one_epoch(model, optimizer, lr_scheduler, data_loader, device, epoch, verbose=True):
+def simple_train_one_epoch(model, optimizer, data_loader, device, epoch, verbose=True):
     start_time = time.time()
     model = model.to(device)
     model.train()
@@ -57,7 +57,6 @@ def simple_train_one_epoch(model, optimizer, lr_scheduler, data_loader, device, 
     optimizer.zero_grad()
     losses.backward()
     optimizer.step()
-    lr_scheduler.step()
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -66,7 +65,7 @@ def simple_train_one_epoch(model, optimizer, lr_scheduler, data_loader, device, 
 
     accumulated_loss = accumulated_loss / len(data_loader)
 
-    return model, optimizer, lr_scheduler, accumulated_loss
+    return model, optimizer, accumulated_loss
 
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, scaler=None):

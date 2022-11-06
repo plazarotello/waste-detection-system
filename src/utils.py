@@ -2,6 +2,8 @@
 
 from typing import Tuple, Union
 from pathlib import Path
+from enum import Enum
+from shutil import rmtree
 
 import pandas as pd
 import numpy as np
@@ -106,7 +108,7 @@ def plot_image_with_annotations(image : Union[Path,str],
         colors.append(base.COLOR_CATS[ann['label']])
     
     boxes = torch.tensor(bounding_boxes)
-    result = draw_bounding_boxes(img, boxes, labels, colors, width=5, font='Arial', font_size=14)
+    result = draw_bounding_boxes(img, boxes, labels, colors, width=5, font_size=14)
 
     if plot: show(result)
     else: return result
@@ -122,18 +124,31 @@ def plot_data_sample(sample_imgs: pd.DataFrame, images_df: pd.DataFrame):
         
 
 # -----------------------------------------------------------------------------
+DATASET_TYPES = Enum('DatasetTypes', 'CANDIDATE FINAL COMPLEMENTARY')
 
 def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : bool = True, 
-                            final : bool = True) -> pd.Series:
+                            dataset_type : DATASET_TYPES = DATASET_TYPES.CANDIDATE) -> pd.Series:
+    base.CANDIDATE_DATASET.mkdir(parents=True, exist_ok=True)
     base.COMP_DATASET.mkdir(parents=True, exist_ok=True)
     base.FINAL_DATASET.mkdir(parents=True, exist_ok=True)
+
+    path_part = None
+    if dataset_type == DATASET_TYPES.CANDIDATE:
+        path_part = base.CANDIDATE_DATASET
+    elif dataset_type == DATASET_TYPES.COMPLEMENTARY:
+        path_part = base.COMP_DATASET
+    elif dataset_type == DATASET_TYPES.FINAL:
+        path_part = base.FINAL_DATASET
+    else:
+        raise 'No dataset type'
+
     current_path = Path(row.path)
     prefix = 'undefined'
     for path, _prefix in base.PREFIXES_CATS.items():
         if str(path) in str(current_path):
             prefix = _prefix
             break
-    new_path = (base.FINAL_DATASET if final else base.COMP_DATASET)/Path(f'{prefix}-{current_path.stem}.jpg')
+    new_path = path_part/Path(f'{prefix}-{current_path.stem}.jpg')
     img = Image.open(current_path)
     img = img.convert('RGB')
     if resize:
@@ -176,3 +191,8 @@ def resize_with_pad(image: Image, new_shape: Tuple[int, int],
     left, right = delta_w//2, delta_w-(delta_w//2)
     image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=padding_color)
     return Image.fromarray(image)
+
+def clean_datasets():
+    rmtree(base.CANDIDATE_DATASET, ignore_errors=True)
+    rmtree(base.FINAL_DATASET, ignore_errors=True)
+    rmtree(base.COMP_DATASET, ignore_errors=True)
