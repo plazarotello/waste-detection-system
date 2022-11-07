@@ -1,5 +1,6 @@
 dataset
 complementary-dataset
+candidate-dataset
 *.pth
 *.egg-info
 raw-datasets/**/*.jpg

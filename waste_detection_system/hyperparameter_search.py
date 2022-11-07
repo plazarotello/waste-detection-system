@@ -1,4 +1,3 @@
-import collections
 import random
 from typing import Iterable
 from itertools import product
@@ -34,17 +33,16 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
     base_model = models.get_base_model(num_classes, selected_model)
     assert base_model is not None
 
-    momentum_list = momentum if isinstance(momentum, collections.Iterable)\
-        else list(momentum)
-    lr_list = lr if isinstance(lr, collections.Iterable) else [lr]
-    bs_list = bs if isinstance(bs, collections.Iterable) else [bs]
-    weight_decay_list = weight_decay if isinstance(weight_decay, collections.Iterable)\
+    momentum_list = momentum if type(momentum) is list else list(momentum)
+    lr_list = lr if type(lr) is list else [lr]
+    bs_list = bs if type(bs) is list else [bs]
+    weight_decay_list = weight_decay if type(weight_decay) is list\
         else [weight_decay]
-    optimizer_list = optimizer_name if isinstance(optimizer_name, collections.Iterable)\
+    optimizer_list = optimizer_name if type(optimizer_name) is list\
         else [optimizer_name]
-    scheduler_list = scheduler if isinstance(scheduler, collections.Iterable)\
+    scheduler_list = scheduler if type(scheduler) is list\
         else [scheduler]
-    scheduler_steps_list = scheduler_steps if isinstance(scheduler_steps, collections.Iterable)\
+    scheduler_steps_list = scheduler_steps if type(scheduler_steps) is list\
         else [scheduler_steps]
     
     bag_of_mutations = create_bag_of_mutations(momentum_list, lr_list, bs_list,
@@ -138,10 +136,12 @@ def create_initial_search_space(momentum_list : Iterable, lr_list : Iterable,
             momentum = -1
         if scheduler != 'StepLR':
             scheduler_steps = -1
-        hyperparameter_search_space.append((momentum, lr, bs, weight_decay, 
-            optimizer, scheduler_steps, scheduler))
+        hyperparameter_option = tuple(map(lambda x : tuple(x) if type(x) is list else x,
+        [momentum, lr, bs, weight_decay, optimizer, scheduler_steps, scheduler]))
+        hyperparameter_search_space.append(hyperparameter_option)
 
     hyperparameter_search_space = list(set(hyperparameter_search_space))
+    print(hyperparameter_search_space)
 
     _tmp = list()
     for id, (momentum, lr, bs, weight_decay, optimizer, scheduler_steps, scheduler)\
@@ -153,10 +153,10 @@ def create_initial_search_space(momentum_list : Iterable, lr_list : Iterable,
     return hyperparameter_search_space
 
 
-def create_bag_of_mutations(momentum_list : Iterable, lr_list : Iterable, 
-        bs_list : Iterable, weight_decay_list : Iterable,
-        scheduler_list : Iterable, scheduler_steps_list : Iterable, 
-        optimizer_list : Iterable) -> dict:
+def create_bag_of_mutations(momentum_list : list, lr_list : list, 
+        bs_list : list, weight_decay_list : list,
+        scheduler_list : list, scheduler_steps_list : list, 
+        optimizer_list : list) -> dict:
     return {
         'momentum' : momentum_list, 'lr' : lr_list, 'bs' : bs_list,
         'weight_decay' : weight_decay_list, 'scheduler' : scheduler_list,

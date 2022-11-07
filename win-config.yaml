@@ -243,5 +243,7 @@ dependencies:
   - zipp=3.10.0=pyhd8ed1ab_0
   - zstd=1.5.2=h7755175_4
   - pip:
-    - --extra-index-url https://download.pytorch.org/whl/cu113
-    - torch==1.12.0+cu113
+    - --extra-index-url https://download.pytorch.org/whl/cu116
+    - torch==1.12.0+cu116
+    - --extra-index-url https://download.pytorch.org/whl/cu116
+    - torchvision==0.13.0+cu116
