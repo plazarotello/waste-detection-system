@@ -92,11 +92,9 @@ def plot_image_with_annotations(image : Union[Path,str],
     img = read_image(image)
     
     bounding_boxes = []
-    labels = []
     colors = []
 
     for (_, ann) in annotations.iterrows():
-        labels.append(ann.label)
         
         bbox_x = int(ann['bbox-x'])
         bbox_y = int(ann['bbox-y'])
@@ -108,7 +106,7 @@ def plot_image_with_annotations(image : Union[Path,str],
         colors.append(base.COLOR_CATS[ann['label']])
     
     boxes = torch.tensor(bounding_boxes)
-    result = draw_bounding_boxes(img, boxes, labels, colors, width=5, font_size=14)
+    result = draw_bounding_boxes(img, boxes, None, colors, width=5, fill=True)
 
     if plot: show(result)
     else: return result

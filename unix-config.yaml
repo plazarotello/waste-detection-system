@@ -1,4 +1,4 @@
-name: base
+name: waste-detector
 channels:
   - conda-forge
   - anaconda
