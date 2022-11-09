@@ -3,7 +3,7 @@ conda env remove -n waste-detector
 conda env create --file {CONFIG_FILE}
 conda activate waste-detector
 python -m ipykernel install --user --name=waste-detector
-pip uninstall custom_torchvision custom_torchvision_reference_detection custom_ultralytics_yolov5
+pip uninstall -y custom_torchvision custom_torchvision_reference_detection custom_ultralytics_yolov5
 cd custom_torchvision
 python setup.py install
 cd ..

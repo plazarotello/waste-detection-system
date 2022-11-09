@@ -64,6 +64,8 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
         for id, momentum, lr, bs, weight_decay, optimizer, scheduler_steps,\
             scheduler in hyperparameter_search_space:
 
+            print(f'ID: {id}, optimizer: {optimizer}, momentum: {momentum}\nlr: {lr}, bs: {bs}, weight_decay: {weight_decay}\nscheduler: {scheduler}, scheduler_steps: {scheduler_steps}')
+
             if id in hyperparameter_models:
                 continue    # already trained this configuration (elite top 1)
             
@@ -141,7 +143,6 @@ def create_initial_search_space(momentum_list : Iterable, lr_list : Iterable,
         hyperparameter_search_space.append(hyperparameter_option)
 
     hyperparameter_search_space = list(set(hyperparameter_search_space))
-    print(hyperparameter_search_space)
 
     _tmp = list()
     for id, (momentum, lr, bs, weight_decay, optimizer, scheduler_steps, scheduler)\

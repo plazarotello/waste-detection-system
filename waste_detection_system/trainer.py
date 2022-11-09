@@ -14,8 +14,8 @@ from sklearn.model_selection import train_test_split
 from PIL import Image
 
 import torch
-import custom_torchvision
-from custom_torchvision import transforms
+import torchvision
+from torchvision import transforms
 
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -152,7 +152,7 @@ def evaluate(model, data_loader, device):
 def apply_nms(orig_prediction, iou_thresh=0.3):
     
     # torchvision returns the indices of the bboxes to keep
-    keep = custom_torchvision.ops.nms(orig_prediction['boxes'], orig_prediction['scores'], iou_thresh)
+    keep = torchvision.ops.nms(orig_prediction['boxes'], orig_prediction['scores'], iou_thresh)
     
     final_prediction = orig_prediction
     final_prediction['boxes'] = final_prediction['boxes'][keep]
