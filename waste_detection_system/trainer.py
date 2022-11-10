@@ -291,15 +291,22 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
     start_time = time.time()
     # train for n epochs
     for epoch in range(start_epoch, epochs):
-        model, optimizer, loss = engine.simple_train_one_epoch(
-            model, optimizer, train_dataloader, device, epoch)
-        if scheduler is not None:
-            scheduler.step()
-            lr = scheduler.get_last_lr()
+        try:
+            model, optimizer, loss = engine.simple_train_one_epoch(
+                model, optimizer, train_dataloader, device, epoch)
+            loss_train.append(loss)
+            val_results = evaluate(model, val_dataloader, device)
+            acc_val.append(val_results)
 
-        loss_train.append(loss)
-        val_results = evaluate(model, val_dataloader, device)
-        acc_val.append(val_results)
+            if scheduler is not None:
+                if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    scheduler.step(loss)
+                else:
+                    scheduler.step()
+                lr = scheduler._last_lr
+        except:
+            print(' Loss infinita, entrenamiento cancelado')
+            break
 
         checkpoint = {
             'model': model_without_ddp.state_dict(),
@@ -313,8 +320,9 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
             utils.save_on_master(checkpoint, os.path.join(
                 output_dir, f'model_{epoch}.pth'))
 
-        print(f' LR:{lr:1.6} | Loss:{round(loss, 2):2.2}-{round(val_results[0], 2):2.2} | '
-            f'mAP:{round(val_results[1], 2):1.2} | mAR:{round(val_results[2], 2):1.2}')
+        if type(lr) is list or type(lr) is tuple: lr = lr[0]
+        print(f' LR:{lr:1.6} | Loss:{round(loss, 2):2.2}-{round(val_results[0], 2):2.2} | ' +
+                f'mAP:{round(val_results[1], 2):1.2} | mAR:{round(val_results[2], 2):1.2}')
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

@@ -1,3 +1,4 @@
+from pathlib import Path
 import random
 from typing import Iterable
 from itertools import product
@@ -54,24 +55,29 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
     gpu_ids = [0] if torch.cuda.is_available() else None
     tracker = EmissionsTracker(project_name=name, experiment_id=f'hypersearch-{name}', 
         gpu_ids=gpu_ids, log_level='error', tracking_mode='process', 
-        measure_power_secs=30)
+        measure_power_secs=30, output_file=Path(results_dir) / f'{name}-emissions.csv')
     tracker.start()
 
     hyperparameter_results = []
     hyperparameter_models = {}
 
     for evo in range(evolutions):
+        print('-'*80)
+        print(' '*30, f'EVOLUTION {evo+1}')
+        print('-'*80)
         for id, momentum, lr, bs, weight_decay, optimizer, scheduler_steps,\
             scheduler in hyperparameter_search_space:
 
-            print(f'ID: {id}, optimizer: {optimizer}, momentum: {momentum}\nlr: {lr}, bs: {bs}, weight_decay: {weight_decay}\nscheduler: {scheduler}, scheduler_steps: {scheduler_steps}')
+            print(f'ID: {id}, optimizer: {optimizer}, momentum: {momentum}\n'+
+            f'lr: {lr}, bs: {bs}, weight_decay: {weight_decay}\n'+
+            f'scheduler: {scheduler}, scheduler_steps: {scheduler_steps}')
 
             if id in hyperparameter_models:
                 continue    # already trained this configuration (elite top 1)
             
             model = base_model
 
-            if optimizer_name == 'Adam':
+            if optimizer == 'Adam':
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr,
                     weight_decay=weight_decay)
             #if optimizer_name == 'SGD':
@@ -93,14 +99,14 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
             
             min_train_loss = min(loss_train)
 
-            min_val_loss = min([item[0].item() for item in val_acc])
-            max_val_map = max([item[1].item() for item in val_acc])
-            max_val_mar = max([item[2].item() for item in val_acc])
+            min_val_loss = min([item[0] for item in val_acc])
+            max_val_map = max([item[1] for item in val_acc])
+            max_val_mar = max([item[2] for item in val_acc])
             
             hyperparameter_models[id] = model
 
             hyperparameter_results.append( (evo, id, momentum, lr, bs, weight_decay,
-            optimizer.__name__, scheduler.__name__, scheduler_steps,
+            optimizer.__class__.__name__, scheduler.__class__.__name__, scheduler_steps,
             min_train_loss, min_val_loss, max_val_map, max_val_mar) )
             tracker.flush()
         
@@ -109,16 +115,19 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
                 'optimizer', 'scheduler', 'scheduler_steps',
                 'train_loss', 'val_loss', 'val_map', 'val_mar'])
         if can_evolve(hyperparameter_results_df, evo):
-            hyperparameter_search_space, 
-            hyperparameter_models = evolve(evo, hyperparameter_results_df, 
-                    hyperparameter_models, bag_of_mutations)
+            evolution_result = evolve(evo, hyperparameter_results_df, 
+                hyperparameter_models, bag_of_mutations)
+            hyperparameter_search_space = evolution_result[0]
+            hyperparameter_models = evolution_result[1]
+        print(hyperparameter_search_space)
         
     tracker.stop()
 
     hyperparameter_results_df = pd.DataFrame(hyperparameter_results,
         columns=['evolution', 'id', 'momentum', 'lr', 'bs', 'weight_decay', 
-            'train_loss',  'val_loss', 'val_map', 'val_mar'])
-    hyperparameter_results_df.to_csv(results_dir / f'{name}.csv', 
+                 'optimizer', 'scheduler', 'scheduler_steps',
+                 'train_loss', 'val_loss', 'val_map', 'val_mar'])
+    hyperparameter_results_df.to_csv(Path(results_dir) / f'{name}.csv', 
         encoding='utf-8', index=False)
 
 
@@ -241,29 +250,30 @@ def evolve(evolution : int, hyperparameter_results_df : pd.DataFrame,
     hyper_evo = hyper_evo.sort_values(by='val_map', ascending=False)
     
     current_population = len(hyper_evo.index)
-    elitism_top1 = hyper_evo.iloc[0]
+    elitism_top1 = hyper_evo.iloc[0].squeeze()
 
     population = hyper_evo
     crossovered = []
     identifier = hyperparameter_results_df['id'].max()+1
-    for _ in range((current_population-1)/2):
+    for _ in range(int((current_population-1)/2)):
         crossovered.append(crossover(
-            population.sample(n=1),
-            population.sample(n=1),
+            population.sample(n=1).squeeze(),
+            population.sample(n=1).squeeze(),
             identifier
         ))
         identifier+=1
-    for _ in random.randrange(0, int(len(crossovered)/4)):
-        to_mutate = random.shuffle(crossovered).pop(0)
-        crossovered.append(mutate(to_mutate, bag_of_mutations))
-        
-    population_df = pd.concat([elitism_top1, crossovered])\
-            [['id', 'momentum', 'lr', 'bs', 'weight_decay', 'optimizer',\
-            'scheduler', 'scheduler_steps']]
-    search_space = [tuple(x) for x in population_df.values]
+    if int(len(crossovered)/4) > 0:
+        for _ in random.randrange(0, int(len(crossovered)/4)):
+            to_mutate = random.shuffle(crossovered).pop(0)
+            crossovered.append(mutate(to_mutate, bag_of_mutations))
+    
+    population_list = crossovered
+    population_list.append(elitism_top1)
+    population_df = pd.DataFrame(population_list)[['id', 'momentum', 'lr', 'bs', 
+        'weight_decay', 'optimizer', 'scheduler_steps', 'scheduler']]
+    search_space = list(population_df.itertuples(index=False, name=None))
     
     elite_model = hyperparameter_models[elitism_top1.id]
-    hyperparameter_models = dict()
-    hyperparameter_models[elitism_top1.id] = elite_model
+    hyperparameter_models = {elitism_top1.id: elite_model}
 
     return search_space, hyperparameter_models
