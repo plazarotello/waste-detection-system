@@ -288,6 +288,7 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
 
     lr = get_lr(optimizer)
 
+    print(' '*37, f'             LR  | Loss |  mAP  |  mAR')
     start_time = time.time()
     # train for n epochs
     for epoch in range(start_epoch, epochs):
@@ -321,8 +322,8 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
                 output_dir, f'model_{epoch}.pth'))
 
         if type(lr) is list or type(lr) is tuple: lr = lr[0]
-        print(f' LR:{lr:1.6} | Loss:{round(loss, 2):2.2}-{round(val_results[0], 2):2.2} | ' +
-                f'mAP:{round(val_results[1], 2):1.2} | mAR:{round(val_results[2], 2):1.2}')
+        print(f' {lr:1.6} | {round(loss, 2):2.2}/{round(val_results[0], 2):2.2} | ' +
+                f'{round(val_results[1], 2):1.2} | {round(val_results[2], 2):1.2}')
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

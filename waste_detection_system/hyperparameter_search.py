@@ -1,15 +1,15 @@
-from pathlib import Path
 import random
-from typing import Iterable
 from itertools import product
+from pathlib import Path
+from typing import Iterable
 
-from codecarbon import EmissionsTracker
-
-import torch
 import pandas as pd
+import torch
+from codecarbon import EmissionsTracker
+from numpy import dtype, int16, linspace
+from math import inf
 
-from . import models
-from . import trainer
+from . import models, trainer
 
 
 def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
@@ -97,11 +97,11 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
                 scheduler, epochs, checkpoint_dir, device, data_augmentation, 
                 binary_classification=(num_classes==1), resume=False, save=False)
             
-            min_train_loss = min(loss_train)
+            min_train_loss = min(loss_train) if loss_train else inf
 
-            min_val_loss = min([item[0] for item in val_acc])
-            max_val_map = max([item[1] for item in val_acc])
-            max_val_mar = max([item[2] for item in val_acc])
+            min_val_loss = min([item[0] for item in val_acc]) if val_acc else inf
+            max_val_map = max([item[1] for item in val_acc]) if val_acc else inf
+            max_val_mar = max([item[2] for item in val_acc]) if val_acc else inf
             
             hyperparameter_models[id] = model
 
@@ -167,6 +167,12 @@ def create_bag_of_mutations(momentum_list : list, lr_list : list,
         bs_list : list, weight_decay_list : list,
         scheduler_list : list, scheduler_steps_list : list, 
         optimizer_list : list) -> dict:
+    momentum_list = linspace(min(momentum_list), max(momentum_list), num=20)
+    weight_decay_list = linspace(min(weight_decay_list), max(weight_decay_list), num=10)
+    scheduler_steps_list = linspace(min(scheduler_steps_list), max(scheduler_steps_list), 
+                                    num=10, dtype=dtype(int16))
+    lr_list = linspace(min(lr_list), max(lr_list), num=25)
+
     return {
         'momentum' : momentum_list, 'lr' : lr_list, 'bs' : bs_list,
         'weight_decay' : weight_decay_list, 'scheduler' : scheduler_list,
