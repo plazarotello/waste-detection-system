@@ -250,7 +250,7 @@ def choose_best_model(models_dir : str, base_model):
 
 def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
         scheduler, epochs: int, output_dir: str, device, 
-        augment : bool = False, resume: bool = True, 
+        augment : bool = False, resume: bool = True, verbose : bool = True,
         binary_classification : bool = False, save : bool = True):
     torch.cuda.empty_cache()
 
@@ -288,13 +288,14 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
 
     lr = get_lr(optimizer)
 
-    print(' '*37, f'             LR  | Loss |  mAP  |  mAR')
+    if verbose: print(' '*37, f'             LR  | Loss |  mAP  |  mAR')
     start_time = time.time()
     # train for n epochs
     for epoch in range(start_epoch, epochs):
         try:
             model, optimizer, loss = engine.simple_train_one_epoch(
-                model, optimizer, train_dataloader, device, epoch)
+                model, optimizer, train_dataloader, device, epoch, 
+                verbose=verbose)
             loss_train.append(loss)
             val_results = evaluate(model, val_dataloader, device)
             acc_val.append(val_results)
@@ -306,7 +307,7 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
                     scheduler.step()
                 lr = scheduler._last_lr
         except:
-            print(' Loss infinita, entrenamiento cancelado')
+            if verbose: print(' Loss infinita, entrenamiento cancelado')
             break
 
         checkpoint = {
@@ -322,12 +323,12 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
                 output_dir, f'model_{epoch}.pth'))
 
         if type(lr) is list or type(lr) is tuple: lr = lr[0]
-        print(f' {lr:1.6} | {round(loss, 2):2.2}/{round(val_results[0], 2):2.2} | ' +
+        if verbose: print(f' {lr:1.6} | {round(loss, 2):2.2}/{round(val_results[0], 2):2.2} | ' +
                 f'{round(val_results[1], 2):1.2} | {round(val_results[2], 2):1.2}')
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print(f'Training time: {total_time_str}')
+    if verbose: print(f'Training time: {total_time_str}')
     return model, loss_train, acc_val
 # -----------------------------------------------------------------------------
 

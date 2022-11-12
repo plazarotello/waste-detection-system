@@ -95,7 +95,8 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
         
             model, loss_train, val_acc = trainer.train(model, labels, bs, optimizer, 
                 scheduler, epochs, checkpoint_dir, device, data_augmentation, 
-                binary_classification=(num_classes==1), resume=False, save=False)
+                binary_classification=(num_classes==1), resume=False, save=False,
+                verbose=False)
             
             min_train_loss = min(loss_train) if loss_train else inf
 
@@ -119,7 +120,6 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
                 hyperparameter_models, bag_of_mutations)
             hyperparameter_search_space = evolution_result[0]
             hyperparameter_models = evolution_result[1]
-        print(hyperparameter_search_space)
         
     tracker.stop()
 
