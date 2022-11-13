@@ -1,7 +1,8 @@
-#!/bin/bash
+eval "$(conda shell.bash hook)"
 conda activate base
 echo "Eliminando el environment si ya existia..."
 conda env remove -n waste-detector
+rm -rf /anaconda/envs/waste-detector
 echo "Enviro eliminado. Recreando..."
 conda env create --file unix-config.yaml
 conda activate waste-detector

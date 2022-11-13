@@ -2,6 +2,7 @@
 
 from typing import List, Dict, Union
 import os
+import math
 import re
 import time
 import datetime
@@ -252,7 +253,8 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
         scheduler, epochs: int, output_dir: str, device, 
         augment : bool = False, resume: bool = True, verbose : bool = True,
         binary_classification : bool = False, save : bool = True):
-    torch.cuda.empty_cache()
+    if base.USE_GPU:
+        torch.cuda.empty_cache()
 
     model_without_ddp = model
 
@@ -287,6 +289,10 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
         return model
 
     lr = get_lr(optimizer)
+
+    patience_epochs = 15
+    patience = 0
+    last_loss = math.inf
 
     if verbose: print(' '*37, f'             LR  | Loss |  mAP  |  mAR')
     start_time = time.time()
@@ -325,6 +331,14 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
         if type(lr) is list or type(lr) is tuple: lr = lr[0]
         if verbose: print(f' {lr:1.6} | {round(loss, 2):2.2}/{round(val_results[0], 2):2.2} | ' +
                 f'{round(val_results[1], 2):1.2} | {round(val_results[2], 2):1.2}')
+        
+        if loss >= last_loss:
+            patience +=1
+        else:
+            patience = 0
+        
+        if patience > patience_epochs:
+            break
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

@@ -115,8 +115,11 @@ def create_yolo_structure(df_path: Path = base.FINAL_DATA_CSV):
 # =============================================================================
 
 def weakly_annotate(new_labels, model, config):
-    device = torch.device(
-        'cuda') if torch.cuda.is_available() else torch.device('cpu')
+    if base.USE_GPU:
+        device = torch.device('cuda') if torch.cuda.is_available()\
+            else torch.device('cpu')
+    else:
+        device = torch.device('cpu')
 
     config = Path(config)
     with open(config, 'r') as f:

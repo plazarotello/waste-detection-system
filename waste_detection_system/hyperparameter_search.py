@@ -9,14 +9,17 @@ from codecarbon import EmissionsTracker
 from numpy import dtype, int16, linspace
 from math import inf
 
-from . import models, trainer
+from . import models, trainer, shared_data as base
 
 
 def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
             selected_model : models.AVAILABLE_MODELS, num_classes : int):
     
-    device = torch.device('cuda') if torch.cuda.is_available()\
-        else torch.device('cpu')
+    if base.USE_GPU:
+        device = torch.device('cuda') if torch.cuda.is_available()\
+            else torch.device('cpu')
+    else:
+        device = torch.device('cpu')
 
     epochs = config['epochs']                       # fixed
     evolutions = config['evolutions']               # fixed
@@ -52,7 +55,7 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
             bs_list, weight_decay_list, scheduler_list, scheduler_steps_list, 
             optimizer_list)
 
-    gpu_ids = [0] if torch.cuda.is_available() else None
+    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU else None
     tracker = EmissionsTracker(project_name=name, experiment_id=f'hypersearch-{name}', 
         gpu_ids=gpu_ids, log_level='error', tracking_mode='process', 
         measure_power_secs=30, output_file=Path(results_dir) / f'{name}-emissions.csv')
@@ -68,9 +71,9 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
         for id, momentum, lr, bs, weight_decay, optimizer, scheduler_steps,\
             scheduler in hyperparameter_search_space:
 
-            print(f'ID: {id}, optimizer: {optimizer}, momentum: {momentum}\n'+
-            f'lr: {lr}, bs: {bs}, weight_decay: {weight_decay}\n'+
-            f'scheduler: {scheduler}, scheduler_steps: {scheduler_steps}')
+            print(f'ID: {id} | {optimizer}({momentum}) | '+
+            f'lr: {lr} | bs: {bs} | wd: {weight_decay} | '+
+            f'{scheduler}({scheduler_steps})')
 
             if id in hyperparameter_models:
                 continue    # already trained this configuration (elite top 1)
@@ -101,8 +104,8 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
             min_train_loss = min(loss_train) if loss_train else inf
 
             min_val_loss = min([item[0] for item in val_acc]) if val_acc else inf
-            max_val_map = max([item[1] for item in val_acc]) if val_acc else inf
-            max_val_mar = max([item[2] for item in val_acc]) if val_acc else inf
+            max_val_map = max([item[1] for item in val_acc]) if val_acc else 0
+            max_val_mar = max([item[2] for item in val_acc]) if val_acc else 0
             
             hyperparameter_models[id] = model
 

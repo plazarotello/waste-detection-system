@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from shutil import rmtree
 from pathlib import Path
+import json
 
 SEED = 11
 
@@ -62,6 +63,22 @@ PSEUDOLABELLING_DIR = CONFIG_DIR / Path('pseudo-labelling')
 
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+USE_CPU = None
+USE_GPU = None
+GPU = None
+
+
+def _base_configuration():
+    config_path = CONFIG_DIR / 'config.json'
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+        global USE_CPU, USE_GPU, GPU
+        USE_CPU = config['use_cpu']
+        USE_GPU = config['use_gpu']
+        GPU = config['gpu']
+
+_base_configuration()
 
 # -----------------------------------------------------------------------------
 

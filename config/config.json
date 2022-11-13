@@ -1,0 +1,5 @@
+{
+    "use_cpu": true,
+    "use_gpu": true,
+    "gpu": 0
+}

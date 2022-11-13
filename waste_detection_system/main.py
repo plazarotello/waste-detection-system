@@ -9,11 +9,11 @@ from codecarbon import EmissionsTracker
 import pandas as pd
 
 import torch
-
+from . import shared_data as base
 from . import models
 from . import trainer
 from . import hyperparameter_search as hyper
-
+from . import dataset_creator
 
 def configure(name: str, config: Union[Path, str]):
     config = Path(config)
@@ -66,12 +66,19 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: Union[Path, s
     config = configure(name, config)
     hyper.hyperparameter_search(labels, name, config, selected_model, num_classes)
 
+def pseudolabel_df(labels: pd.DataFrame, new_labels: list, name: str, config: Union[Path, str],
+                   resume: bool = False, binary_classification : bool = False):
+    dataset_creator.pseudolabel_df(labels, new_labels, name, config, resume, 
+        binary_classification)
+
 def train(labels: pd.DataFrame, name: str, config: Union[Path, str],
             selected_model : models.AVAILABLE_MODELS, num_classes : int, 
             resume: bool = False):
-    device = torch.device('cuda') if torch.cuda.is_available()\
-        else torch.device('cpu')
-    # device = torch.device('cpu')
+    if base.USE_GPU:
+        device = torch.device('cuda') if torch.cuda.is_available()\
+            else torch.device('cpu')
+    else:
+        device = torch.device('cpu')
 
     config = configure(name, config)
     epochs = config['epochs']
@@ -107,7 +114,7 @@ def train(labels: pd.DataFrame, name: str, config: Union[Path, str],
     else:
         scheduler = None
     
-    gpu_ids = [0] if torch.cuda.is_available() else None
+    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU else None
     
     tracker = EmissionsTracker(project_name=name, experiment_id='train', gpu_ids=gpu_ids, 
         log_level='error', tracking_mode='process', measure_power_secs=30)
