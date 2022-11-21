@@ -23,8 +23,11 @@ Write-Output "Instalando custom_torchvision_reference_detection..."
 Set-Location custom_torchvision_reference_detection
 python setup.py install *>&1 > installation.log
 Set-Location ..
+Write-Output "Comprobando que los paquetes custom estan bien instalados..."
 python -c "import torchvision"
 python -c "import custom_torchvision_reference_detection"
 python -c "import custom_ultralytics_yolov5"
+Write-Output "Comprobando que todo se ha instalado correctamente..."
+python -c "import waste_detection_system"
 Write-Output "Todo hecho."
 # python ./setup.py install

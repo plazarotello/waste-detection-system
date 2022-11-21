@@ -313,8 +313,7 @@ def train(model, dataset: DataFrame, bs: int, optimizer: optim.Optimizer,
                     scheduler.step()
                 lr = scheduler._last_lr
         except:
-            if verbose: print(' Loss infinita, entrenamiento cancelado')
-            break
+            pass
 
         checkpoint = {
             'model': model_without_ddp.state_dict(),
