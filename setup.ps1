@@ -7,8 +7,6 @@ conda activate waste-detector
 Write-Output "Enviro recreado. Instalando ipykernel..."
 python -m ipykernel install --user --name=waste-detector
 Write-Output "ipykernel instalado. Eliminando paquetes custom..."
-conda remove -y torchvision
-pip install -y pyyaml
 pip uninstall -y torchvision custom_torchvision_reference_detection custom_ultralytics_yolov5
 Write-Output "Instalando custom_torchvision..."
 Set-Location custom_torchvision

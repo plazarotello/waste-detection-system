@@ -80,6 +80,8 @@ def get_ssd(num_classes : int, transfer_learning_level : int):
 
 
 def get_yolo(num_classes : int, transfer_learning_level : int):
+    model=hubconf.yolov5l6(classes=num_classes, autoshape=False,
+                                _verbose=False)
     model = load_partial_weights(
             model=hubconf.yolov5l6(classes=num_classes, autoshape=False,
                                 _verbose=False),
