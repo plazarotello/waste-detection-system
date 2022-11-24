@@ -10,15 +10,24 @@ Write-Output "ipykernel instalado. Eliminando paquetes custom..."
 pip uninstall -y torchvision custom_torchvision_reference_detection custom_ultralytics_yolov5
 Write-Output "Instalando custom_torchvision..."
 Set-Location custom_torchvision
+Remove-Item -Recurse -Force dist
+Remove-Item -Recurse -Force build
+Remove-Item -Recurse -Force torchvision.egg-info
 set DISTUTILS_USE_SDK=1
 python setup.py install *>&1 > installation.log
 Set-Location ..
 Write-Output "Instalando custom_ultralytics_yolov5..."
 Set-Location custom_ultralytics_yolov5
+Remove-Item -Recurse -Force dist
+Remove-Item -Recurse -Force build
+Remove-Item -Recurse -Force custom_ultralytics_yolov5.egg-info
 python setup.py install *>&1 > installation.log
 Set-Location ..
 Write-Output "Instalando custom_torchvision_reference_detection..."
 Set-Location custom_torchvision_reference_detection
+Remove-Item -Recurse -Force dist
+Remove-Item -Recurse -Force build
+Remove-Item -Recurse -Force custom_torchvision_reference_detection.egg-info
 python setup.py install *>&1 > installation.log
 Set-Location ..
 Write-Output "Comprobando que los paquetes custom estan bien instalados..."
