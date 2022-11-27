@@ -283,3 +283,4 @@ dependencies:
   - zeromq=4.3.4=h0e60522_1
   - zipp=3.10.0=pyhd8ed1ab_0
   - zstd=1.5.2=h7755175_4
+  - torchinfo

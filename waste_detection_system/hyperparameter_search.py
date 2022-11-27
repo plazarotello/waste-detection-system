@@ -13,7 +13,8 @@ from . import models, trainer, shared_data as base
 
 
 def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
-            selected_model : models.AVAILABLE_MODELS, num_classes : int):
+        selected_model : models.AVAILABLE_MODELS, num_classes : int, 
+        tll : int, weights = None):
     
     if base.USE_GPU:
         device = torch.device('cuda') if torch.cuda.is_available()\
@@ -34,8 +35,10 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
     results_dir = config['results_dir']             # fixed
     data_augmentation = config['data_augmentation'] # fixed
 
-    base_model = models.get_base_model(num_classes, selected_model)
+    base_model = models.get_base_model(num_classes, selected_model, tll)
     assert base_model is not None
+    if weights:
+        base_model = models.load_partial_weights(base_model, weights)
 
     momentum_list = momentum if type(momentum) is list else list(momentum)
     lr_list = lr if type(lr) is list else [lr]

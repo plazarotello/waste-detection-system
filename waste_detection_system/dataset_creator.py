@@ -180,10 +180,10 @@ def pseudolabel(labels_csv: Path, new_labels: list, name: str, config: Union[Pat
 
 
 def pseudolabel_df(labels: pd.DataFrame, new_labels: list, name: str, config: Union[Path, str],
-                   resume: bool = False, binary_classification : bool = False):
+                   tll: int, resume: bool = False, binary_classification : bool = False):
 
     model = main.train(labels, name, config, AVAILABLE_MODELS.FASTERRCNN, 
-        (1 if binary_classification else 6), resume)
+        (1 if binary_classification else 6), tll, resume)
     
     new_data = weakly_annotate(new_labels, model, config)
     if len(new_data.index) > 0:

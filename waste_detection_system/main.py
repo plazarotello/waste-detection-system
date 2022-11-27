@@ -62,9 +62,13 @@ def configure(name: str, config: Union[Path, str]):
 
 
 def hyperparameter_search(labels: pd.DataFrame, name: str, config: Union[Path, str],
-    selected_model : models.AVAILABLE_MODELS, num_classes : int):
+    selected_model : models.AVAILABLE_MODELS, num_classes : int, tll : int,
+    weights: Union[Path, str, None] = None):
     config = configure(name, config)
-    hyper.hyperparameter_search(labels, name, config, selected_model, num_classes)
+    if weights:
+        weights = torch.load(weights)
+    hyper.hyperparameter_search(labels, name, config, selected_model, num_classes, tll, 
+        weights)
 
 def pseudolabel_df(labels: pd.DataFrame, new_labels: list, name: str, config: Union[Path, str],
                    resume: bool = False, binary_classification : bool = False):
@@ -72,8 +76,8 @@ def pseudolabel_df(labels: pd.DataFrame, new_labels: list, name: str, config: Un
         binary_classification)
 
 def train(labels: pd.DataFrame, name: str, config: Union[Path, str],
-            selected_model : models.AVAILABLE_MODELS, num_classes : int, 
-            resume: bool = False):
+            selected_model : models.AVAILABLE_MODELS, num_classes : int, tll : int,
+            weights: Union[Path, str, None] = None, resume: bool = False):
     if base.USE_GPU:
         device = torch.device('cuda') if torch.cuda.is_available()\
             else torch.device('cpu')
@@ -94,9 +98,13 @@ def train(labels: pd.DataFrame, name: str, config: Union[Path, str],
 
     checkpoint_dir = config['checkpoint_dir']
     data_augmentation = config['data_augmentation']
-
-    model = models.get_base_model(num_classes, selected_model)
+    
+    model = models.get_base_model(num_classes, selected_model, tll)
     assert model is not None
+
+    if weights:
+        weights = torch.load(weights)
+        model = models.load_partial_weights(model, weights)
     
     if opt == 'SGD':
         optimizer = torch.optim.SGD(model.parameters(), lr=lr, 
