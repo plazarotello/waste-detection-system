@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import shared_data as base
+from . import shared_data as base
 
 from enum import Enum
 from torch import load, hub
