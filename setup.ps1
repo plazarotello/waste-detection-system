@@ -78,6 +78,6 @@ python -c "import torchvision"
 python -c "import custom_torchvision_reference_detection"
 python -c "import custom_ultralytics_yolov5"
 Write-Output "Comprobando que todo se ha instalado correctamente..."
-python -c "from . import waste_detection_system"
+python -c "from waste_detection_system import *"
 Write-Output "Todo hecho."
 # python ./setup.py install

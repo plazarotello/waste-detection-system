@@ -13,7 +13,7 @@ setup(
    license=license,
    install_requires=[
     'pytorch==0.12.0'
-    'custom_torchvision==0.13.*', 
+    'torchvision==0.13.*', 
     'custom_torchvision_reference_detection', 
     'custom_ultralytics_yolov5'],
 )
