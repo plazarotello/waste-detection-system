@@ -68,7 +68,6 @@ Remove-Item -Recurse -ErrorAction Ignore -Force dist
 Remove-Item -Recurse -ErrorAction Ignore -Force build
 Remove-Item -Recurse -ErrorAction Ignore -Force custom_torchvision_reference_detection.egg-info
 python setup.py install *>&1 > installation.log
-Set-Location custom_torchvision_reference_detection
 Remove-Item -Recurse -ErrorAction Ignore -Force dist
 Remove-Item -Recurse -ErrorAction Ignore -Force build
 Remove-Item -Recurse -ErrorAction Ignore -Force custom_torchvision_reference_detection.egg-info
