@@ -28,7 +28,7 @@ class ModelModule(pl.LightningModule):
         self.iou_threshold = iou_threshold
 
         # Save hyperparameters
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=['model'])
     
     def forward(self, x):
         self.model.eval()

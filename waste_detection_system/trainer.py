@@ -81,8 +81,7 @@ def train(model, dataset : DataFrame, config : dict, neptune_project : str):
             num_sanity_val_steps=0,
             max_epochs=epochs,
             logger=neptune_logger,
-            accelerator='gpu', devices=1,
-            fast_dev_run=True
+            accelerator='gpu', devices=1
         )
     else:
         trainer = Trainer(
@@ -144,6 +143,9 @@ def log_model_neptune(
     neptune_logger,
 ):
     """Saves the model to disk, uploads it to neptune."""
+    print(checkpoint_path)
+    print(save_directory)
+    print(name)
     checkpoint = torch.load(checkpoint_path)
     model = checkpoint["hyper_parameters"]["model"]
     torch.save(model.state_dict(), save_directory / name)

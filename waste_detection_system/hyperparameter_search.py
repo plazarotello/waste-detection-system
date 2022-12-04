@@ -17,9 +17,12 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
     epochs = config['epochs']                       # fixed
     optimizer_name = config['optimizer']            # may be list
     momentum = config['momentum']                   # may be list
+    scheduler = config['scheduler']                 # may be list
+    scheduler_steps = config['scheduler_steps']     # may be list
     lr = config['lr']                               # may be list
     bs = config['bs']                               # may be list
     weight_decay = config['weight_decay']           # may be list
+
 
     base_model = models.get_base_model(num_classes, selected_model, tll)
     assert base_model is not None
@@ -33,14 +36,19 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
         else [weight_decay]
     optimizer_list = optimizer_name if type(optimizer_name) is list\
         else [optimizer_name]
+    scheduler_list = scheduler if type(scheduler) is list\
+        else [scheduler]
+    scheduler_steps_list = scheduler_steps if type(scheduler_steps) is list\
+        else [scheduler_steps]
 
     hyperparameter_search_space = create_initial_search_space(momentum_list, lr_list,
-            bs_list, weight_decay_list, optimizer_list)
+            bs_list, weight_decay_list, scheduler_list, scheduler_steps_list, 
+            optimizer_list)
 
     gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU else None
     tracker = EmissionsTracker(project_name=name, experiment_id=f'hypersearch-{name}', 
         gpu_ids=gpu_ids, log_level='error', tracking_mode='process', 
-        measure_power_secs=30, output_file=Path(results_dir) / f'{name}-emissions.csv')  # type: ignore
+        measure_power_secs=30, output_file=Path(config['results_dir']) / f'{name}-emissions.csv')  # type: ignore
     tracker.start()
 
     for id, momentum, lr, bs, weight_decay, optimizer, scheduler_steps,\
@@ -88,27 +96,31 @@ def hyperparameter_search(labels: pd.DataFrame, name: str, config: dict,
 
 def create_initial_search_space(momentum_list : Iterable, lr_list : Iterable, 
         bs_list : Iterable, weight_decay_list : Iterable,
+        scheduler_list : Iterable, scheduler_steps_list : Iterable, 
         optimizer_list : Iterable) -> Iterable:
 
     full_search_space = product(momentum_list, lr_list, bs_list,
-        weight_decay_list, optimizer_list)
+        weight_decay_list, scheduler_list, scheduler_steps_list, optimizer_list)
     
     hyperparameter_search_space = []
-    for momentum, lr, bs, weight_decay, optimizer \
+    for momentum, lr, bs, weight_decay, scheduler, scheduler_steps, optimizer \
         in full_search_space:
 
         if optimizer != 'SGD':
             momentum = -1
+        if scheduler != 'StepLR':
+            scheduler_steps = -1
         hyperparameter_option = tuple(map(lambda x : tuple(x) if type(x) is list else x,
-        [momentum, lr, bs, weight_decay, optimizer]))
+        [momentum, lr, bs, weight_decay, optimizer, scheduler_steps, scheduler]))
         hyperparameter_search_space.append(hyperparameter_option)
 
     hyperparameter_search_space = list(set(hyperparameter_search_space))
 
     _tmp = list()
-    for id, (momentum, lr, bs, weight_decay, optimizer)\
+    for id, (momentum, lr, bs, weight_decay, optimizer, scheduler_steps, scheduler)\
         in enumerate(hyperparameter_search_space):
-        _tmp.append((id, momentum, lr, bs, weight_decay, optimizer))
+        _tmp.append((id, momentum, lr, bs, weight_decay, optimizer, 
+            scheduler_steps, scheduler))
 
     hyperparameter_search_space = _tmp
     return hyperparameter_search_space

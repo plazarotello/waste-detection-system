@@ -27,9 +27,9 @@ class WasteDetectionDataset(Dataset):
         self.targets : Dict[Path, List] = {}
 
         for img_path in data.path.unique():
-            self.inputs.append(base.ROOT / img_path)
-            self.targets[base.ROOT / img_path] = \
-                data[data.path == img_path].apply(
+            idx = base.ROOT / img_path
+            self.inputs.append(idx)
+            self.targets[idx] = data[data.path == img_path].apply(  # type: ignore
                 lambda row: {
                     'label' : row['label'],
                     'bounding-box': [row['bbox-x'], row['bbox-y'],

@@ -21,7 +21,11 @@ NEPTUNE_PROJECTS = {
     AVAILABLE_MODELS.FASTERRCNN : ['plazarotello/fasterrcnn-resortit', 
                                     'plazarotello/fasterrcnn-zerowaste'],
     AVAILABLE_MODELS.SSD : ['plazarotello/ssd-resortit', 
-                            'plazarotello/ssd-zerowaste']
+                            'plazarotello/ssd-zerowaste'],
+    AVAILABLE_MODELS.RETINANET : ['plazarotello/retinanet-resortit', 
+                                'plazarotello/retinanet-zerowaste'],
+    AVAILABLE_MODELS.FCOS : ['plazarotello/fcos-resortit', 
+                            'plazarotello/fcos-zerowaste'],
 }
 
 # -----------------------------------------------------------------------------
