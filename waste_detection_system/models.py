@@ -6,14 +6,15 @@ from enum import Enum
 from torch import load, hub
 from itertools import chain
 
-from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights
-from torchvision.models.detection import fcos_resnet50_fpn, FCOS_ResNet50_FPN_Weights
-from torchvision.models.detection import retinanet_resnet50_fpn_v2, RetinaNet_ResNet50_FPN_V2_Weights
+from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights, FasterRCNN
+from torchvision.models.detection import fcos_resnet50_fpn, FCOS_ResNet50_FPN_Weights, FCOS
+from torchvision.models.detection import retinanet_resnet50_fpn_v2, RetinaNet_ResNet50_FPN_V2_Weights, RetinaNet
 from torchvision.models.detection import ssd300_vgg16, SSD300_VGG16_Weights
+from torchvision.models.detection.ssd import SSD
 
 from torchinfo import summary
 
-AVAILABLE_MODELS = Enum('Models', 'FASTERRCNN FCOS RETINANET SSD YOLO')
+AVAILABLE_MODELS = Enum('Models', 'FASTERRCNN FCOS RETINANET SSD')
 
 
 def load_partial_weights(model, weights):
@@ -50,8 +51,6 @@ def get_base_model(num_classes : int, chosen_model : AVAILABLE_MODELS,
     elif chosen_model == AVAILABLE_MODELS.FCOS: return get_fcos(num_classes, 
                                                                 transfer_learning_level)
     elif chosen_model == AVAILABLE_MODELS.RETINANET: return get_retinanet(num_classes, 
-                                                                transfer_learning_level)
-    elif chosen_model == AVAILABLE_MODELS.YOLO: return get_yolo(num_classes, 
                                                                 transfer_learning_level)
     elif chosen_model == AVAILABLE_MODELS.SSD : return get_ssd(num_classes, 
                                                                 transfer_learning_level)
@@ -208,81 +207,41 @@ def apply_tll_to_ssd(model, transfer_learning_level : int):
     return model
 
 
-# YOLOv5 24 layers
-# Head 14 layers
-# Backbone 10 layers
-def apply_tll_to_yolo(model, transfer_learning_level : int):
-    total_layers = 24
-    head_layers = 14
-    layers_to_train = 0
-    freeze = []
-
-    # TLL=0 : train from scratch
-    if transfer_learning_level == 0:
-        freeze = []  # layers to freeze 
-    # TLL=1 : transfer learning, train only the head
-    elif transfer_learning_level == 1:
-        freeze = [f'model.{x}.' for x in range(0, (total_layers-head_layers))]
-    # TLL>1 : fine-tuning, trains the head plus the (n-1) number of layers from top to bottom
-    elif transfer_learning_level >= 2 and transfer_learning_level <= 5:
-        if transfer_learning_level == 2:
-            layers_to_train = 8
-        elif transfer_learning_level == 3:
-            layers_to_train = 7
-        elif transfer_learning_level == 4:
-            layers_to_train = 6
-        elif transfer_learning_level == 5:
-            layers_to_train = 5
-        
-        freeze = [f'model.{x}.' for x in range(0, layers_to_train)]
-    
-    for key, param in model.named_parameters():
-            param.requires_grad = True  # train all layers
-            if any(x in key for x in freeze): 
-                param.requires_grad = False 
-
-    print_stats(model, transfer_learning_level)
-    return model
-    
-
-
 def get_fasterrcnn(num_classes : int, transfer_learning_level : int):
+    FasterRCNN.model_num_classes = 0  # type: ignore
     model = load_partial_weights(
             model=fasterrcnn_resnet50_fpn_v2(num_classes=num_classes+1),
             weights=FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT.get_state_dict(progress=True)
     )
+    model.model_num_classes = num_classes+1  # type: ignore
     return apply_tll_to_fasterrcnn(model, transfer_learning_level)
 
 
 def get_fcos(num_classes : int, transfer_learning_level : int):
+    FCOS.model_num_classes = 0  # type: ignore
     model = load_partial_weights(
             model=fcos_resnet50_fpn(num_classes=num_classes+1),
             weights=FCOS_ResNet50_FPN_Weights.DEFAULT.get_state_dict(progress=True)
     )
+    model.model_num_classes = num_classes+1  # type: ignore
     return apply_tll_to_fcos_retinanet(model, transfer_learning_level)
 
 
 def get_retinanet(num_classes : int, transfer_learning_level : int):
+    RetinaNet.model_num_classes = 0  # type: ignore
     model = load_partial_weights(
             model=retinanet_resnet50_fpn_v2(num_classes=num_classes+1),
             weights=RetinaNet_ResNet50_FPN_V2_Weights.DEFAULT.get_state_dict(progress=True)
     )
+    model.model_num_classes = num_classes+1  # type: ignore
     return apply_tll_to_fcos_retinanet(model=model, transfer_learning_level=transfer_learning_level)
     
 
 def get_ssd(num_classes : int, transfer_learning_level : int):
+    SSD.model_num_classes = 0  # type: ignore
     model = load_partial_weights(
             model=ssd300_vgg16(num_classes=num_classes+1),
             weights=SSD300_VGG16_Weights.DEFAULT.get_state_dict(progress=True)
     )
+    model.model_num_classes = num_classes+1  # type: ignore
     return apply_tll_to_ssd(model, transfer_learning_level)
-
-
-def get_yolo(num_classes : int, transfer_learning_level : int):
-    model = hub.load(str(base.ROOT/'custom_ultralytics_yolov5'/'custom_ultralytics_yolov5'), 
-        'yolov5l', source='local', trust_repo=True, verbose=False, pretrained=True,
-        classes=num_classes, autoshape=False, _verbose=False)
-    model = load_partial_weights(model=model,
-            weights=load(base.MODELS_DIR / 'yolov5l6.pt')
-    )
-    return apply_tll_to_yolo(model, transfer_learning_level)

@@ -3,13 +3,26 @@ from shutil import rmtree
 from pathlib import Path
 import json
 
+from .models import AVAILABLE_MODELS
+
 SEED = 11
+PATIENCE = 30
 
 IMG_WIDTH = 640
 IMG_HEIGHT = 640
 
 ROOT = Path('.')
 RESULTS = ROOT / Path('results')
+
+with open(ROOT/'neptune.secret', 'r', encoding='utf-8-sig') as f:
+    NEPTUNE_API_KEY = f.read()
+
+NEPTUNE_PROJECTS = {
+    AVAILABLE_MODELS.FASTERRCNN : ['plazarotello/fasterrcnn-resortit', 
+                                    'plazarotello/fasterrcnn-zerowaste'],
+    AVAILABLE_MODELS.SSD : ['plazarotello/ssd-resortit', 
+                            'plazarotello/ssd-zerowaste']
+}
 
 # -----------------------------------------------------------------------------
 # Raw datasets paths
@@ -81,52 +94,11 @@ def _base_configuration():
 _base_configuration()
 
 # -----------------------------------------------------------------------------
-
-YOLO_MODEL = MODELS_DIR / 'ultralytics_yolov5_master'
-YOLO_BEST_WEIGHTS = ROOT / 'yolov5l6-best.pt'
-YOLO_HIDDEN_WEIGHTS = YOLO_MODEL / 'runs' / \
-    'train' / 'exp' / 'weights' / 'best.pt'
-YOLO_HIDDEN_HYPER = YOLO_MODEL / 'runs' / \
-    'train' / 'exp' / 'hyp.yaml'
-YOLO_BEST_HYPER = ROOT / 'yolov5-hyper.yaml'
-
-# -----------------------------------------------------------------------------
 # Data paths
 # =============================================================================
 
 FINAL_DATA_CSV = RESULTS / 'final-dataset.csv'
 COMP_DATA_CSV = RESULTS / 'complementary-dataset.csv'
-
-YOLO_CONFIG = MODELS_DIR / 'YOLO-cfg'
-
-YOLO_NET_YAML = YOLO_CONFIG / 'custom-yolov5l.yaml'
-YOLO_DATA_YAML = YOLO_CONFIG / 'dataset.yaml'
-YOLO_BASE_WEIGHTS = ROOT / 'yolov5l6.pt'
-
-YOLO_DATA_FOLDER = ROOT / 'models' / 'dataset' / 'yolo'
-
-YOLO_DATA_IMG_TXT = 'images.txt'
-
-YOLO_DATA_IMGS = 'images'
-YOLO_DATA_LABELS = 'labels'
-
-YOLO_DATA_TRAIN = 'train'
-YOLO_DATA_VAL = 'val'
-YOLO_DATA_TEST = 'test'
-
-# -----------------------------------------------------------------------------
-# Training arguments
-# =============================================================================
-
-YOLO_IMG_SIZE_W = IMG_WIDTH
-YOLO_BATCH_SIZE = -1    # autobatch
-YOLO_OPTIMIZER = 'SGD'
-YOLO_EPOCHS = 300
-YOLO_PATIENCE = 25  # epochs for Early Stopping
-
-# Hyperparameter search
-YOLO_EVOLVE_GENS = 50 # generations to search and mutate
-YOLO_EVOLVE_EPOCHS = 10 # epochs to train each generation
 
 # -----------------------------------------------------------------------------
 # Color constants

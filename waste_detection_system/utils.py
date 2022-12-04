@@ -16,7 +16,10 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import cv2
 
+
 from . import shared_data as base
+from .bounding_box import BoundingBox
+from .enumerators import BBFormat, BBType
 
 # -----------------------------------------------------------------------------
 
@@ -80,8 +83,8 @@ def show(imgs, figsize=(5,5), title=''):
     for i, img in enumerate(imgs):
         img = img.detach()
         img = F.to_pil_image(img)
-        axs[0, i].imshow(np.asarray(img))
-        axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
+        axs[0, i].imshow(np.asarray(img))  # type: ignore
+        axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])  # type: ignore
     fix.tight_layout()
     plt.show()
 
@@ -89,7 +92,7 @@ def show(imgs, figsize=(5,5), title=''):
 def plot_image_with_annotations(image : Union[Path,str], 
                                 annotations : pd.DataFrame,
                                 plot : bool = True):
-    img = read_image(image)
+    img = read_image(str(image))
     
     bounding_boxes = []
     colors = []
@@ -115,7 +118,7 @@ def plot_image_with_annotations(image : Union[Path,str],
 def plot_data_sample(sample_imgs: pd.DataFrame, images_df: pd.DataFrame):
     images = []
     for (_, img) in sample_imgs.iterrows():
-        anns = images_df[images_df.path == img.path]
+        anns : pd.DataFrame = images_df[images_df.path == img.path]  # type: ignore
         images.append(plot_image_with_annotations(str(img.path), anns, False))
     
     show(images, title='Muestra de los datos')
@@ -138,7 +141,7 @@ def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : boo
     elif dataset_type == DATASET_TYPES.FINAL:
         path_part = base.FINAL_DATASET
     else:
-        raise 'No dataset type'
+        raise 'No dataset type'  # type: ignore
 
     current_path = Path(row.path)
     prefix = 'undefined'
@@ -152,6 +155,7 @@ def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : boo
     if resize:
         img = resize_with_pad(img, (base.IMG_HEIGHT, base.IMG_WIDTH))
     img.save(new_path, 'jpeg')
+    bbox = (0.0, 0.0, 0.0, 0.0)
     if labelled:
         bbox = coco2yolo(row['bbox-x'], row['bbox-y'], row['bbox-w'], row['bbox-h'], 
                             row['width'], row['height'])
@@ -168,8 +172,8 @@ def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : boo
     return row
 
 # https://gist.github.com/IdeaKing/11cf5e146d23c5bb219ba3508cca89ec
-def resize_with_pad(image: Image, new_shape: Tuple[int, int], 
-                    padding_color: Tuple[int] = (0, 0, 0)) -> Image:
+def resize_with_pad(image, new_shape: Tuple[int, int], 
+                    padding_color: Tuple[int, int, int] = (0, 0, 0)):
     """Maintains aspect ratio and resizes with padding.
     Params:
         image: Image to be resized.
@@ -194,3 +198,24 @@ def clean_datasets():
     rmtree(base.CANDIDATE_DATASET, ignore_errors=True)
     rmtree(base.FINAL_DATASET, ignore_errors=True)
     rmtree(base.COMP_DATASET, ignore_errors=True)
+
+
+def from_dict_to_boundingbox(file: dict, name: str, groundtruth: bool = True):
+    """Returns list of BoundingBox objects from groundtruth or prediction."""
+    labels = file["labels"]
+    boxes = file["boxes"]
+    scores = np.array(file["scores"].cpu()) if not groundtruth else [None] * len(boxes)
+
+    gt = BBType.GROUND_TRUTH if groundtruth else BBType.DETECTED
+
+    return [
+        BoundingBox(
+            image_name=name,
+            class_id=int(l),  # type: ignore
+            coordinates=tuple(bb),
+            format=BBFormat.XYX2Y2,
+            bb_type=gt,
+            confidence=s,
+        )
+        for bb, l, s in zip(boxes, labels, scores)
+    ]

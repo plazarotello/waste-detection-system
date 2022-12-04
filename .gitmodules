@@ -1,9 +1,0 @@
-[submodule "custom_ultralytics_yolov5"]
-	path = custom_ultralytics_yolov5
-	url = https://github.com/plazarotello/waste-detection-yolov5
-[submodule "custom_torchvision_reference_detection"]
-	path = custom_torchvision_reference_detection
-	url = https://github.com/plazarotello/waste-detection-torchvision-reference-detection
-[submodule "custom_torchvision"]
-	path = custom_torchvision
-	url = https://github.com/plazarotello/waste-detection-torchvision
