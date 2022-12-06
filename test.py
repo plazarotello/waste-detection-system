@@ -36,5 +36,6 @@ zerowaste_train_sample = zerowaste_train[zerowaste_train['path'].isin(
 resortit_train_sample = resortit_train[resortit_train['path'].isin(
     resortit_train[['path']].sample(frac=0.3).path.tolist())]
 
-main.train(labels=resortit_train_sample, name='fasterrcnn-train', config=base.MODELS_DIR/'faster-r-cnn-coco.json',
-    resortit_zw=0, selected_model=main.models.AVAILABLE_MODELS.FASTERRCNN, num_classes=2, tll=1)
+main.train(train_dataset=resortit_train, val_dataset=resortit_val, name='ssd-resortit', 
+            config=base.MODELS_DIR/'ssd-pretrain.json', num_classes=2, tll=1, resortit_zw=0,
+            selected_model=main.models.AVAILABLE_MODELS.SSD)

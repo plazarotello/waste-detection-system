@@ -19,8 +19,8 @@ def configure(name: str, config: Union[Path, str]):
     with open(configuration, 'r') as f:
         configuration = json.load(f)
     
-    epochs = configuration['epochs']
-    momentum = configuration['momentum']
+    epochs = configuration['epochs'] if 'epochs' in configuration.keys() else 100
+    momentum = configuration['momentum'] if 'momentum' in configuration.keys() else 0.9
     optimizer = configuration['optimizer'] if 'optimizer' in configuration.keys()\
         else 'SGD'
     scheduler = configuration['scheduler'] if 'scheduler' in configuration.keys()\
@@ -28,11 +28,11 @@ def configure(name: str, config: Union[Path, str]):
     scheduler_steps = configuration['scheduler_steps'] if 'scheduler_steps' in\
         configuration.keys() else None
 
-    lr = configuration['lr']
+    lr = configuration['lr'] if 'lr' in configuration.keys() else 0.1
 
-    weight_decay = configuration['weight_decay']
+    weight_decay = configuration['weight_decay'] if 'weight_decay' in configuration.keys() else 0.001
 
-    bs = configuration['batch_size']
+    bs = configuration['batch_size'] if 'batch_size' in configuration.keys() else 1
     checkpoint_dir = chk_dir / name
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_dir = str(checkpoint_dir)
@@ -49,21 +49,23 @@ def configure(name: str, config: Union[Path, str]):
 
 
 
-def hyperparameter_search(labels: pd.DataFrame, name: str, config: Union[Path, str],
+def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path, str],
     selected_model : models.AVAILABLE_MODELS, num_classes : int, tll : int,
-    resortit_zw : int, weights: Union[Path, str, None] = None):
+    weights: Union[Path, str, None] = None):
     
     configuration = configure(name, config)
 
     if weights: weights = torch.load(weights)
     
-    hyper.hyperparameter_search(labels, name, configuration, selected_model, 
-        num_classes, tll, resortit_zw, weights)
+    hyper.hyperparameter_search(name=name, dataset=dataset, config=configuration, 
+        selected_model=selected_model, num_classes=num_classes, 
+        tll=tll, weights=weights)
 
 
 
 
-def train(labels: pd.DataFrame, name: str, config: Union[Path, str], resortit_zw : int,
+def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str, 
+            config: Union[Path, str], resortit_zw : int,
             selected_model : models.AVAILABLE_MODELS, num_classes : int, tll : int,
             weights: Union[Path, str, None] = None):
 
@@ -82,7 +84,7 @@ def train(labels: pd.DataFrame, name: str, config: Union[Path, str], resortit_zw
         log_level='error', tracking_mode='process', measure_power_secs=30)  # type: ignore
 
     tracker.start()
-    best_model_path, model_trainer = trainer.train(model=model, dataset=labels, 
-        config=configuration, 
+    best_model_path, model_trainer = trainer.train(model=model, train_dataset=train_dataset, 
+        val_dataset=val_dataset, config=configuration, 
         neptune_project=base.NEPTUNE_PROJECTS[selected_model][resortit_zw])
     tracker.stop()

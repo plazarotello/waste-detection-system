@@ -14,6 +14,8 @@ pip install codecarbon albumentations
 pip install lightning
 pip install importlib_metadata
 pip install neptune-client neptune-contrib
+pip install jupyter_contrib_nbextensions
+jupyter contrib nbextension install
 
 Write-Output "Enviro recreado. Instalando ipykernel..."
 python -m ipykernel install --user --name=waste-detector

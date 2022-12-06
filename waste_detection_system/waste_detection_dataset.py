@@ -6,12 +6,13 @@ import numpy as np
 from PIL import Image
 
 from .transformations import ComposeDouble, Clip, normalize_01
-from .transformations import AlbumentationWrapper, FunctionWrapperDouble
+from .transformations import FunctionWrapperDouble
 import torch
 from torchvision import transforms
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 from . import shared_data as base
+
 
 
 class WasteDetectionDataset(Dataset):
@@ -57,18 +58,3 @@ class WasteDetectionDataset(Dataset):
         y = {'boxes' : boxes, 'labels' : labels}
 
         return {'x' : x, 'y' : y, 'path' : input_path}
-
-
-def collate_double(batch):
-    x = [sample['x'] for sample in batch]
-    y = [sample['y'] for sample in batch]
-    img_path = [sample['path'] for sample in batch]
-    return x, y, img_path
-
-def get_dataloader(data : DataFrame, batch_size : int, shuffle : bool = True):
-    mapping = { base.CATS_PAPEL : 1, base.CATS_PLASTICO : 2}
-    dataset = WasteDetectionDataset(data=data, mapping=mapping)
-    dataloader = DataLoader(dataset=dataset, batch_size=batch_size,
-        shuffle=shuffle, num_workers=0, collate_fn=collate_double)
-    
-    return dataloader

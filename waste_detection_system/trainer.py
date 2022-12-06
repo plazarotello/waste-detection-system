@@ -16,14 +16,13 @@ from sklearn.model_selection import train_test_split
 
 
 import importlib_metadata
-import neptune.new as neptune
 from neptune.new.types import File
 import pathlib
 
 
 from . import shared_data as base
-from . import waste_detection_dataset
-from .model_module import ModelModule
+from . import waste_detection_module
+from .waste_detection_module import WasteDetectionModule
 
 
 
@@ -35,32 +34,71 @@ def split_dataset(dataset : DataFrame) -> Tuple[DataFrame, DataFrame]:
            dataset[dataset['path'].isin(val_paths)])
 
 
-def train(model, dataset : DataFrame, config : dict, neptune_project : str):
+
+def tune(model, train_dataset):
+    seed_everything(base.SEED)
+
+    epochs = 100
+
+    if base.USE_GPU:
+        trainer = Trainer(
+            gpus=base.GPU,
+            num_sanity_val_steps=0,
+            max_epochs=epochs,
+            accelerator='gpu', devices=1,
+            auto_lr_find=True,
+            auto_scale_batch_size=True
+        )
+    else:
+        trainer = Trainer(
+            accelerator='cpu',
+            num_sanity_val_steps=0,
+            max_epochs=epochs,
+            auto_lr_find=True,
+            auto_scale_batch_size=True
+        )
+
+    lit_model = WasteDetectionModule(model=model, train_dataset=train_dataset,
+        val_dataset=None, batch_size=1, lr=0.1)
+
+    print('Searching for optimal initial learning rate...')
+    lr_finder = trainer.tuner.lr_find(model=lit_model, min_lr=1e-9)
+    
+    if lr_finder: 
+        print(f'Suggested initial lr: {lr_finder.suggestion()}')
+        print(f'Complete results: {lr_finder.results}')
+        lr_finder.plot(suggest=True, show=True)
+
+    
+    print('Searching for maximum batch size...')
+    batch_scaler = trainer.tuner.scale_batch_size(model=lit_model, init_val=1)
+    print(f'Largest batch_size allowed: {batch_scaler}')
+
+
+def train(model, train_dataset : DataFrame, val_dataset : DataFrame, config : dict, 
+        neptune_project : str):
     seed_everything(base.SEED)
 
     epochs = config['epochs']
-    batch_size = config['bs']
+    lr = config['lr']
+    bs = int(config['bs'] / 2)
     output_dir = config['checkpoint_dir']
-
-    train_dataset, val_dataset = split_dataset(dataset=dataset)
-    train_dataloader = waste_detection_dataset.get_dataloader(
-        data=train_dataset, batch_size=batch_size, shuffle=True
-    )
-    val_dataloader = waste_detection_dataset.get_dataloader(
-        data=val_dataset, batch_size=1, shuffle=False
-    )
 
     neptune_logger = NeptuneLogger(
         api_key=base.NEPTUNE_API_KEY,
         project=neptune_project
     )
 
-    task = ModelModule(model=model, config=config)
+    lit_model = WasteDetectionModule(model=model, train_dataset=train_dataset,
+        val_dataset=val_dataset, batch_size=bs, lr=lr)
     
     checkpoint_callback = ModelCheckpoint(
         monitor='Validation_mAP', 
         mode='max',
-        dirpath=output_dir
+        save_top_k=3,
+        filename='ssd-{epoch:02d}-{Validation_mAP:.2f}',
+        verbose=False,
+        save_last=True
         )
     learningrate_callback = LearningRateMonitor(
         logging_interval='step',
@@ -78,10 +116,12 @@ def train(model, dataset : DataFrame, config : dict, neptune_project : str):
             callbacks=[checkpoint_callback, learningrate_callback,
                 earlystopping_callback],
             default_root_dir=Path(output_dir),
-            num_sanity_val_steps=0,
             max_epochs=epochs,
             logger=neptune_logger,
-            accelerator='gpu', devices=1
+            accelerator='gpu',
+            num_sanity_val_steps=0,
+            auto_lr_find=False,
+            auto_scale_batch_size=False
         )
     else:
         trainer = Trainer(
@@ -89,31 +129,50 @@ def train(model, dataset : DataFrame, config : dict, neptune_project : str):
             callbacks=[checkpoint_callback, learningrate_callback,
                 earlystopping_callback],
             default_root_dir=Path(output_dir),
-            num_sanity_val_steps=0,
             max_epochs=epochs,
-            logger=neptune_logger
+            logger=neptune_logger,
+            num_sanity_val_steps=0,
+            auto_lr_find=False,
+            auto_scale_batch_size=False
         )
 
-    trainer.fit(model=task, train_dataloaders=train_dataloader,
-        val_dataloaders=val_dataloader)
+    trainer.fit(model=lit_model)
     
     log_packages_neptune(neptune_logger=neptune_logger)
     
-    best_model_path = checkpoint_callback.best_model_path
-    log_model_neptune(
-        checkpoint_path=Path(best_model_path), 
-        neptune_logger=neptune_logger,
-        save_directory=Path(output_dir), 
-        name='best_model.pt'
-    )
-    
+    best_k_models = checkpoint_callback.best_k_models
+    last_model_path = Path(checkpoint_callback.last_model_path)
+    best_model_path = None
+    if best_k_models:
+        for path, score in best_k_models.items():
+            path = Path(path)
+            if path.exists() and path.is_file():
+                if not best_model_path:
+                    best_model_path = path
+
+                model_name = path.stem + str(score.double()) + path.suffix
+                log_model_neptune(
+                    checkpoint_path=path, 
+                    save_directory=Path(output_dir),
+                    neptune_logger=neptune_logger,
+                    name=model_name
+                )
+    elif last_model_path.exists() and last_model_path.is_file():
+        best_model_path = last_model_path
+        log_model_neptune(
+            checkpoint_path=best_model_path, 
+            save_directory=Path(output_dir),
+            neptune_logger=neptune_logger,
+            name=last_model_path.name
+        )
+                
     neptune_logger.experiment.stop()
     
     return best_model_path, trainer
 
 
 def test(trainer : Trainer, dataset : DataFrame):
-    dataloader = waste_detection_dataset.get_dataloader(
+    dataloader = waste_detection_module.get_dataloader(
         data=dataset,
         batch_size=1,
         shuffle=False
@@ -143,9 +202,6 @@ def log_model_neptune(
     neptune_logger,
 ):
     """Saves the model to disk, uploads it to neptune."""
-    print(checkpoint_path)
-    print(save_directory)
-    print(name)
     checkpoint = torch.load(checkpoint_path)
     model = checkpoint["hyper_parameters"]["model"]
     torch.save(model.state_dict(), save_directory / name)
