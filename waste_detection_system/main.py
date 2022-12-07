@@ -67,6 +67,7 @@ def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path,
 def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str, 
             config: Union[Path, str], resortit_zw : int,
             selected_model : models.AVAILABLE_MODELS, num_classes : int, tll : int,
+            limit_validation : Union[bool, float] = False,
             weights: Union[Path, str, None] = None):
 
     configuration = configure(name, config)
@@ -85,6 +86,6 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
 
     tracker.start()
     best_model_path, model_trainer = trainer.train(model=model, train_dataset=train_dataset, 
-        val_dataset=val_dataset, config=configuration, 
+        val_dataset=val_dataset, config=configuration, limit_validation=limit_validation,
         neptune_project=base.NEPTUNE_PROJECTS[selected_model][resortit_zw])
     tracker.stop()

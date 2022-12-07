@@ -81,6 +81,8 @@ PSEUDOLABELLING_DIR = CONFIG_DIR / Path('pseudo-labelling')
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
+LIMIT_VAL_BATCHES = 0.25
+
 USE_CPU = None
 USE_GPU = None
 GPU = None

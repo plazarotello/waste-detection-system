@@ -8,13 +8,8 @@ from torchvision.models.detection import  FasterRCNN, FCOS, RetinaNet
 from torchvision.models.detection.ssd import SSD
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
-
-from .utils import from_dict_to_boundingbox
-from .enumerators import MethodAveragePrecision
-from .pascal_voc_evaluator import get_pascalvoc_metrics
 from . import shared_data as base
 from .waste_detection_dataset import WasteDetectionDataset
-from .bounding_box import BoundingBox
 
 
 
@@ -34,6 +29,13 @@ class WasteDetectionModule(pl.LightningModule):
         self.val_dataset = val_dataset
 
         # Configuration dictionary
+        if self.val_dataset is not None:
+            self.train_batch_size = int(batch_size/2)
+            self.val_batch_size = int(batch_size/2)
+        else:
+            self.train_batch_size = batch_size
+            self.val_batch_size = 1
+        
         self.batch_size = batch_size
         self.lr = lr
 
@@ -60,6 +62,12 @@ class WasteDetectionModule(pl.LightningModule):
         self.log_dict(loss_dict)
         return loss
     
+
+    def on_validation_start(self) -> None:
+        super().on_validation_start()
+
+        self.map_metric = MeanAveragePrecision()
+
     def validation_step(self, batch, batch_idx):
         # Batch
         x, y, img_path = batch
@@ -67,80 +75,21 @@ class WasteDetectionModule(pl.LightningModule):
         # Inference
         preds = self.model(x)
 
-        gt_boxes = [
-            from_dict_to_boundingbox(file=target, name=name, groundtruth=True)
-            for target, name in zip(y, img_path)
-        ]
-        gt_boxes = list(chain(*gt_boxes))
+        self.map_metric.update(preds=preds, target=y)
 
-        pred_boxes = [
-            from_dict_to_boundingbox(file=pred, name=name, groundtruth=False)
-            for pred, name in zip(preds, img_path)
-        ]
-        pred_boxes = list(chain(*pred_boxes))
+        return preds
 
-        return {"pred_boxes": pred_boxes, "gt_boxes": gt_boxes}
-    
     def validation_epoch_end(self, outs):
-        predictions = []
-        target = []
-        for out in outs:
-            ground_truth = {
-                'boxes' : [],
-                'labels' : []
-            }
-            prediction = {
-                'boxes' : [],
-                'scores' : [],
-                'labels' : []
-            }
-
-            for gt, pred in zip(out["gt_boxes"], out["pred_boxes"]):
-                ground_truth['boxes'].append(list(gt.get_absolute_bounding_box()))
-                ground_truth['labels'].append(gt.get_class_id())
-
-                prediction['boxes'].append(list(pred.get_absolute_bounding_box()))
-                prediction['labels'].append(pred.get_class_id())
-                prediction['scores'].append(pred.get_confidence())
-            
-            ground_truth['boxes'] = torch.tensor(ground_truth['boxes'])  # type: ignore
-            ground_truth['labels'] = torch.tensor(ground_truth['labels'])  # type: ignore
-
-            prediction['boxes'] = torch.tensor(prediction['boxes'])  # type: ignore
-            prediction['scores'] = torch.tensor(prediction['scores'])  # type: ignore
-            prediction['labels'] = torch.tensor(prediction['labels'])  # type: ignore
-
-            predictions.append(prediction)
-            target.append(ground_truth)
-        
-        metric = MeanAveragePrecision(iou_thresholds=[self.iou_threshold],
-            max_detection_thresholds=[25], class_metrics=True,
-            bbox_format='xyxy', iou_type='bbox')
-        metric.update(preds=predictions, target=target)
-        computed_map = metric.compute()
+        computed_map = self.map_metric.compute()
 
         self.log("Validation_mAP", computed_map['map'])
-        self.log("Validation_AP_PAPEL", computed_map['map_per_class'][0])
-        self.log("Validation_AP_PLASTICO", computed_map['map_per_class'][1])
+        self.log("Validation_metrics", computed_map)
 
-        # gt_boxes = [out["gt_boxes"] for out in outs]
-        # gt_boxes = list(chain(*gt_boxes))
-        # pred_boxes = [out["pred_boxes"] for out in outs]
-        # pred_boxes = list(chain(*pred_boxes))
 
-        # metric = get_pascalvoc_metrics(
-        #     gt_boxes=gt_boxes,
-        #     det_boxes=pred_boxes,
-        #     iou_threshold=self.iou_threshold,
-        #     method=MethodAveragePrecision.EVERY_POINT_INTERPOLATION,
-        #     generate_table=True,
-        # )
+    def on_test_start(self) -> None:
+        super().on_test_start()
 
-        # per_class, m_ap = metric["per_class"], metric["m_ap"]
-        # self.log("Validation_mAP", m_ap)
-
-        # for key, value in per_class.items():
-        #     self.log(f"Validation_AP_{key}", value["AP"])
+        self.map_metric = MeanAveragePrecision()
 
     def test_step(self, batch, batch_idx):
         # Batch
@@ -149,39 +98,15 @@ class WasteDetectionModule(pl.LightningModule):
         # Inference
         preds = self.model(x)
 
-        gt_boxes = [
-            from_dict_to_boundingbox(file=target, name=name, groundtruth=True)
-            for target, name in zip(y, img_path)
-        ]
-        gt_boxes = list(chain(*gt_boxes))
+        self.map_metric.update(preds=preds, target=y)
 
-        pred_boxes = [
-            from_dict_to_boundingbox(file=pred, name=name, groundtruth=False)
-            for pred, name in zip(preds, img_path)
-        ]
-        pred_boxes = list(chain(*pred_boxes))
-
-        return {"pred_boxes": pred_boxes, "gt_boxes": gt_boxes}
+        return preds
 
     def test_epoch_end(self, outs):
-        gt_boxes = [out["gt_boxes"] for out in outs]
-        gt_boxes = list(chain(*gt_boxes))
-        pred_boxes = [out["pred_boxes"] for out in outs]
-        pred_boxes = list(chain(*pred_boxes))
+        computed_map = self.map_metric.compute()
 
-        metric = get_pascalvoc_metrics(
-            gt_boxes=gt_boxes,
-            det_boxes=pred_boxes,
-            iou_threshold=self.iou_threshold,
-            method=MethodAveragePrecision.EVERY_POINT_INTERPOLATION,
-            generate_table=True,
-        )
-
-        per_class, m_ap = metric["per_class"], metric["m_ap"]
-        self.log("Test_mAP", m_ap)
-
-        for key, value in per_class.items():
-            self.log(f"Test_AP_{key}", value["AP"])
+        self.log("Test_mAP", computed_map['map'])
+        self.log_dict("Test_metrics", computed_map)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), 
@@ -200,15 +125,17 @@ class WasteDetectionModule(pl.LightningModule):
     
 
     def train_dataloader(self):
+        real_batch_size = self.train_batch_size or self.batch_size or \
+            self.hparams.batch_size
         return get_dataloader(data=self.train_dataset, shuffle=True,
-            batch_size=self.batch_size or self.hparams.batch_size)  # type: ignore
+            batch_size=real_batch_size)  # type: ignore
     
 
     def val_dataloader(self):
         if self.val_dataset is None:
             return None
-        return get_dataloader(data=self.val_dataset, shuffle=False,
-            batch_size=self.batch_size or self.hparams.batch_size)  # type: ignore
+        return get_dataloader(data=self.val_dataset, shuffle=True,
+            batch_size=self.val_batch_size or 1)  # type: ignore
 
 
 

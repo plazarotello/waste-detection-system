@@ -18,8 +18,6 @@ import cv2
 
 
 from . import shared_data as base
-from .bounding_box import BoundingBox
-from .enumerators import BBFormat, BBType
 
 # -----------------------------------------------------------------------------
 
@@ -198,24 +196,3 @@ def clean_datasets():
     rmtree(base.CANDIDATE_DATASET, ignore_errors=True)
     rmtree(base.FINAL_DATASET, ignore_errors=True)
     rmtree(base.COMP_DATASET, ignore_errors=True)
-
-
-def from_dict_to_boundingbox(file: dict, name: str, groundtruth: bool = True):
-    """Returns list of BoundingBox objects from groundtruth or prediction."""
-    labels = file["labels"]
-    boxes = file["boxes"]
-    scores = np.array(file["scores"].cpu()) if not groundtruth else [None] * len(boxes)
-
-    gt = BBType.GROUND_TRUTH if groundtruth else BBType.DETECTED
-
-    return [
-        BoundingBox(
-            image_name=name,
-            class_id=int(l),  # type: ignore
-            coordinates=tuple(bb),
-            format=BBFormat.XYX2Y2,
-            bb_type=gt,
-            confidence=s,
-        )
-        for bb, l, s in zip(boxes, labels, scores)
-    ]

@@ -11,7 +11,7 @@ from lightning.pytorch.loggers import NeptuneLogger
 
 from pandas import DataFrame
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Union
 from sklearn.model_selection import train_test_split
 
 
@@ -76,13 +76,17 @@ def tune(model, train_dataset):
 
 
 def train(model, train_dataset : DataFrame, val_dataset : DataFrame, config : dict, 
-        neptune_project : str):
+        neptune_project : str, limit_validation : Union[bool, float] = False):
     seed_everything(base.SEED)
 
     epochs = config['epochs']
     lr = config['lr']
-    bs = int(config['bs'] / 2)
+    bs = config['bs']
     output_dir = config['checkpoint_dir']
+
+    if type(limit_validation) is bool:
+        if limit_validation: limit_validation = base.LIMIT_VAL_BATCHES
+        else: limit_validation = 1.0
 
     neptune_logger = NeptuneLogger(
         api_key=base.NEPTUNE_API_KEY,
@@ -121,7 +125,8 @@ def train(model, train_dataset : DataFrame, val_dataset : DataFrame, config : di
             accelerator='gpu',
             num_sanity_val_steps=0,
             auto_lr_find=False,
-            auto_scale_batch_size=False
+            auto_scale_batch_size=False,
+            limit_val_batches=limit_validation
         )
     else:
         trainer = Trainer(
@@ -133,7 +138,8 @@ def train(model, train_dataset : DataFrame, val_dataset : DataFrame, config : di
             logger=neptune_logger,
             num_sanity_val_steps=0,
             auto_lr_find=False,
-            auto_scale_batch_size=False
+            auto_scale_batch_size=False,
+            limit_val_batches=limit_validation
         )
 
     trainer.fit(model=lit_model)
