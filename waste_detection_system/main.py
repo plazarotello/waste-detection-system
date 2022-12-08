@@ -10,6 +10,7 @@ from . import shared_data as base
 from . import models
 from . import trainer
 from . import hyperparameter_search as hyper
+from .waste_detection_module import WasteDetectionModule
 
 
 
@@ -89,3 +90,8 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
         val_dataset=val_dataset, config=configuration, limit_validation=limit_validation,
         neptune_project=base.NEPTUNE_PROJECTS[selected_model][resortit_zw])
     tracker.stop()
+
+
+def load_weights_from_checkpoint(checkpoint_path : Union[str, Path]):
+    module = WasteDetectionModule.load_from_checkpoint(checkpoint_path=checkpoint_path)
+    return module.model.state_dict()
