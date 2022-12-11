@@ -1,24 +1,31 @@
-import torch
+# -*- coding: utf-8 -*-
+
+"""Waste Detection System: Trainer
+
+Module holding the hyperparameter tuning and training scripts.
+Includes auxiliary functions to log to neptune.ai
+"""
+
+import shutil
 from lightning import Trainer
 from lightning.lite.utilities.seed import seed_everything
 from lightning.pytorch.callbacks import (
-    EarlyStopping,
+    # EarlyStopping,
     LearningRateMonitor,
     ModelCheckpoint
 )
 from lightning.pytorch.loggers import NeptuneLogger
-
+from torchvision.models.detection import  FasterRCNN, FCOS, RetinaNet
+from torchvision.models.detection.ssd import SSD
 
 from pandas import DataFrame
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Any, Tuple, Union
 from sklearn.model_selection import train_test_split
-
 
 import importlib_metadata
 from neptune.new.types import File
 import pathlib
-
 
 from . import shared_data as base
 from . import waste_detection_module
@@ -27,6 +34,14 @@ from .waste_detection_module import WasteDetectionModule
 
 
 def split_dataset(dataset : DataFrame) -> Tuple[DataFrame, DataFrame]:
+    """Splits a dataset in train (85%) and validation (15%)
+
+    Args:
+        dataset (DataFrame): dataset to split
+
+    Returns:
+        Tuple[DataFrame, DataFrame]: train dataset and validation dataset, in that order
+    """
     paths = dataset.path.unique()
     train_paths, val_paths = train_test_split(paths, test_size=0.15)
 
@@ -35,7 +50,19 @@ def split_dataset(dataset : DataFrame) -> Tuple[DataFrame, DataFrame]:
 
 
 
-def tune(model, train_dataset):
+def tune(model: Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataFrame, 
+        monitor_metric : str, find_lr : bool = True, find_batch_size : bool = True):
+    """Searches in the hyperparameter space for an optimal initial learning rate and maximum
+    batch size
+
+    Args:
+        model (_type_): model
+        train_dataset (DataFrame): dataset for training
+        monitor_metric (str): name of the metric to monitor. Usual values: ``Validation_mAP``, 
+                             ``training_loss``, ``bbox_regression`` and ``classification``
+        find_lr (bool, optional): if the task must find an optimal learning rate. Defaults to ``True``.
+        find_batch_size (bool, optional): if the task must find the maximum batch size. Defaults to ``True``.
+    """
     seed_everything(base.SEED)
 
     epochs = 100
@@ -46,37 +73,58 @@ def tune(model, train_dataset):
             num_sanity_val_steps=0,
             max_epochs=epochs,
             accelerator='gpu', devices=1,
-            auto_lr_find=True,
-            auto_scale_batch_size=True
+            auto_lr_find=find_lr,
+            auto_scale_batch_size=find_batch_size
         )
     else:
         trainer = Trainer(
             accelerator='cpu',
             num_sanity_val_steps=0,
             max_epochs=epochs,
-            auto_lr_find=True,
-            auto_scale_batch_size=True
+            auto_lr_find=find_lr,
+            auto_scale_batch_size=find_batch_size
         )
 
     lit_model = WasteDetectionModule(model=model, train_dataset=train_dataset,
-        val_dataset=None, batch_size=1, lr=0.1)
+        val_dataset=None, batch_size=1, lr=0.1, monitor_metric=monitor_metric)
 
-    print('Searching for optimal initial learning rate...')
-    lr_finder = trainer.tuner.lr_find(model=lit_model, min_lr=1e-9)
-    
-    if lr_finder: 
-        print(f'Suggested initial lr: {lr_finder.suggestion()}')
-        print(f'Complete results: {lr_finder.results}')
-        lr_finder.plot(suggest=True, show=True)
+    if find_lr:
+        print('Searching for optimal initial learning rate...')
+        lr_finder = trainer.tuner.lr_find(model=lit_model, min_lr=1e-9)
+        
+        if lr_finder: 
+            print(f'Suggested initial lr: {lr_finder.suggestion()}')
+            lr_finder.plot(suggest=True, show=True)
 
-    
-    print('Searching for maximum batch size...')
-    batch_scaler = trainer.tuner.scale_batch_size(model=lit_model, init_val=1)
-    print(f'Largest batch_size allowed: {batch_scaler}')
+    if find_batch_size:
+        print('Searching for maximum batch size...')
+        batch_scaler = trainer.tuner.scale_batch_size(model=lit_model, init_val=1)
+        print(f'Largest batch_size allowed: {batch_scaler}')
 
 
-def train(model, train_dataset : DataFrame, val_dataset : DataFrame, config : dict, 
-        neptune_project : str, limit_validation : Union[bool, float] = False):
+def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataFrame, 
+        val_dataset : DataFrame, config : dict, neptune_project : str, metric : str, 
+        limit_validation : Union[bool, float] = False) -> Tuple[Union[Path, None], Trainer]:
+    """Trains the model with the given configuration.
+    The training includes model checkpointing for the last epoch and best model regarding the
+    given metric.
+    The configuration dictionary must hold the ``epochs`` key (max epochs to train), 
+    ``lr`` key (learning rate), ``bs`` (batch size to use).
+
+
+    Args:
+        model (Union[FasterRCNN, FCOS, RetinaNet, SSD]): model to train
+        train_dataset (DataFrame): training dataset
+        val_dataset (DataFrame): validation dataset
+        config (dict): configuration dictionary
+        neptune_project (str): name of the project in which to log
+        metric (str): name of the metric to monitor. Usual values: ``Validation_mAP``, 
+                    ``training_loss``, ``bbox_regression`` and ``classification``
+        limit_validation (Union[bool, float], optional): if validation dataset must be limited (``True`` = 25%). Defaults to ``False``.
+
+    Returns:
+        Tuple[Union[Path, str], Trainer]: best model path and the trainer
+    """
     seed_everything(base.SEED)
 
     epochs = config['epochs']
@@ -94,13 +142,12 @@ def train(model, train_dataset : DataFrame, val_dataset : DataFrame, config : di
     )
 
     lit_model = WasteDetectionModule(model=model, train_dataset=train_dataset,
-        val_dataset=val_dataset, batch_size=bs, lr=lr)
+        val_dataset=val_dataset, batch_size=bs, lr=lr, monitor_metric=metric)
     
     checkpoint_callback = ModelCheckpoint(
-        monitor='Validation_mAP', 
-        mode='max',
-        save_top_k=3,
-        filename='ssd-{epoch:02d}-{Validation_mAP:.2f}',
+        monitor=metric, 
+        mode='max' if metric == 'Validation_mAP' else 'min',
+        save_top_k=1,
         verbose=False,
         save_last=True
         )
@@ -108,17 +155,16 @@ def train(model, train_dataset : DataFrame, val_dataset : DataFrame, config : di
         logging_interval='step',
         log_momentum=False
     )
-    earlystopping_callback = EarlyStopping(
-        monitor='Validation_mAP',
-        patience=base.PATIENCE,
-        mode='max'
-    )
+    # earlystopping_callback = EarlyStopping(
+    #     monitor='Validation_mAP',
+    #     patience=int(base.PATIENCE/10),
+    #     mode='max'
+    # )
 
     if base.USE_GPU:
         trainer = Trainer(
             gpus=base.GPU,
-            callbacks=[checkpoint_callback, learningrate_callback,
-                earlystopping_callback],
+            callbacks=[checkpoint_callback, learningrate_callback],
             default_root_dir=Path(output_dir),
             max_epochs=epochs,
             logger=neptune_logger,
@@ -126,58 +172,64 @@ def train(model, train_dataset : DataFrame, val_dataset : DataFrame, config : di
             num_sanity_val_steps=0,
             auto_lr_find=False,
             auto_scale_batch_size=False,
-            limit_val_batches=limit_validation
+            limit_val_batches=limit_validation,
+            check_val_every_n_epoch=10
         )
     else:
         trainer = Trainer(
             gpus=base.GPU,
-            callbacks=[checkpoint_callback, learningrate_callback,
-                earlystopping_callback],
+            callbacks=[checkpoint_callback, learningrate_callback],
             default_root_dir=Path(output_dir),
             max_epochs=epochs,
             logger=neptune_logger,
             num_sanity_val_steps=0,
             auto_lr_find=False,
             auto_scale_batch_size=False,
-            limit_val_batches=limit_validation
+            limit_val_batches=limit_validation,
+            check_val_every_n_epoch=10
         )
 
     trainer.fit(model=lit_model)
     
     log_packages_neptune(neptune_logger=neptune_logger)
+    neptune_logger.experiment.stop()
     
     best_k_models = checkpoint_callback.best_k_models
     last_model_path = Path(checkpoint_callback.last_model_path)
     best_model_path = None
     if best_k_models:
-        for path, score in best_k_models.items():
+        for path, _ in best_k_models.items():
             path = Path(path)
             if path.exists() and path.is_file():
                 if not best_model_path:
                     best_model_path = path
-
-                model_name = path.stem + str(score.double()) + path.suffix
-                log_model_neptune(
+                save_best_model(
                     checkpoint_path=path, 
-                    save_directory=Path(output_dir),
-                    neptune_logger=neptune_logger,
-                    name=model_name
+                    save_directory=Path(output_dir)
                 )
     elif last_model_path.exists() and last_model_path.is_file():
         best_model_path = last_model_path
-        log_model_neptune(
+        save_best_model(
             checkpoint_path=best_model_path, 
-            save_directory=Path(output_dir),
-            neptune_logger=neptune_logger,
-            name=last_model_path.name
+            save_directory=Path(output_dir)
         )
                 
-    neptune_logger.experiment.stop()
-    
+    if best_model_path is not None:
+        best_model_path = Path(output_dir) / Path(best_model_path).name
+
     return best_model_path, trainer
 
 
-def test(trainer : Trainer, dataset : DataFrame):
+def test(trainer : Trainer, dataset : DataFrame) -> Any:
+    """Tests the dataset in the given trainer
+
+    Args:
+        trainer (Trainer): trainer to test
+        dataset (DataFrame): test dataset
+
+    Returns:
+        Any: test metrics
+    """
     dataloader = waste_detection_module.get_dataloader(
         data=dataset,
         batch_size=1,
@@ -187,8 +239,12 @@ def test(trainer : Trainer, dataset : DataFrame):
     return trainer.test(ckpt_path='best', dataloaders=dataloader)
 
 
-def log_packages_neptune(neptune_logger):
-    """log the packages of the current python env."""
+def log_packages_neptune(neptune_logger : NeptuneLogger):
+    """Flushes the logs of the run
+
+    Args:
+        neptune_logger (NeptuneLogger): neptune.ai logger
+    """
     dists = importlib_metadata.distributions()
     packages = {
         idx: (dist.metadata["Name"], dist.version) for idx, dist in enumerate(dists)
@@ -201,15 +257,11 @@ def log_packages_neptune(neptune_logger):
     neptune_logger.experiment['packages'].upload(File.as_html(packages_df))
 
 
-def log_model_neptune(
-    checkpoint_path: pathlib.Path,
-    save_directory: pathlib.Path,
-    name: str,
-    neptune_logger,
-):
-    """Saves the model to disk, uploads it to neptune."""
-    checkpoint = torch.load(checkpoint_path)
-    model = checkpoint["hyper_parameters"]["model"]
-    torch.save(model.state_dict(), save_directory / name)
+def save_best_model(checkpoint_path: pathlib.Path, save_directory: pathlib.Path):
+    """Copies the best model to the save directory
 
-    neptune_logger['model'].upload(File.as_pickle(model))
+    Args:
+        checkpoint_path (pathlib.Path): best model path
+        save_directory (pathlib.Path): save directory
+    """
+    shutil.copy2(src=checkpoint_path, dst=save_directory)

@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+
+"""Waste Detection System: Transformations
+
+Taken from https://github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial
+Following the tutorial on https://johschmidt42.medium.com/train-your-own-object-detector-with-faster-rcnn-pytorch-8d3c759cfc70
+"""
+
 from functools import partial
 from typing import Callable, List
 
@@ -26,7 +34,7 @@ def re_normalize(inp: np.ndarray) -> np.ndarray:
     return inp_out
 
 
-def clip_bbs(inp: np.ndarray, bbs: np.ndarray) -> np.array:
+def clip_bbs(inp: np.ndarray, bbs: np.ndarray) -> np.array:  # type: ignore
     """
     If the bounding boxes exceed one dimension, they are clipped to the dim's maximum.
     Bounding boxes are expected to be in xyxy format.
@@ -60,7 +68,7 @@ def clip_bbs(inp: np.ndarray, bbs: np.ndarray) -> np.array:
 
 def map_class_to_int(labels: List[str], mapping: dict) -> np.ndarray:
     """Maps a string to an integer."""
-    labels = np.array(labels)
+    labels = np.array(labels)  # type: ignore
     dummy = np.empty_like(labels)
     for key, value in mapping.items():
         dummy[labels == key] = value
@@ -182,7 +190,7 @@ class AlbumentationWrapper(Repr):
     def __call__(self, inp: np.ndarray, tar: dict):
         # input, target
         transform = A.Compose(
-            [self.albumentation],
+            [self.albumentation],  # type: ignore
             bbox_params=A.BboxParams(format=self.format, label_fields=["class_labels"]),
         )
 

@@ -1,8 +1,15 @@
+# -*- coding: utf-8 -*-
+
+"""Waste Detection System: Dataset
+
+Class representing the dataset used in the Waste Detection System
+Created following the tutorial on https://johschmidt42.medium.com/train-your-own-object-detector-with-faster-rcnn-pytorch-8d3c759cfc70
+"""
+
 from typing import List, Dict
 from pathlib import Path
 
 from pandas import DataFrame
-import numpy as np
 from PIL import Image
 
 from .transformations import ComposeDouble, Clip, normalize_01
@@ -14,13 +21,19 @@ from torch.utils.data import Dataset
 from . import shared_data as base
 
 
-
 class WasteDetectionDataset(Dataset):
+    """The Waste Detection Dataset for use with Pytorch Lightning
+    """
     def __init__(self, data: DataFrame, mapping: Dict) -> None:
+        """Parses the data from the dataset and performs sanity operations
+        on the bounding boxes
+
+        Args:
+            data (DataFrame): dataset
+            mapping (Dict): maps the class numbers to the string representations
+        """
         self.transforms = ComposeDouble([
-            Clip(),
-            FunctionWrapperDouble(np.moveaxis, source=-1, destination=0),
-            FunctionWrapperDouble(normalize_01)
+            Clip()
         ])
         self.mapping = mapping
 
@@ -41,9 +54,20 @@ class WasteDetectionDataset(Dataset):
             )
     
     def __len__(self) -> int:
+        """
+        Returns:
+            int: length of the dataset
+        """
         return len(self.inputs)
     
-    def __getitem__(self, index) -> Dict:
+    def __getitem__(self, index : int) -> Dict:
+        """
+        Args:
+            index (int): index
+
+        Returns:
+            Dict: item on the given index
+        """
         input_path = self.inputs[index]
         targets = self.targets[input_path]
 

@@ -1,4 +1,6 @@
-__version__ = '0.0.1'
+"""Waste Detection System
 
-# from . import shared_data
-# shared_data._base_configuration()
+Module for creating, training and testing models for paperboard and plastic waste detection
+"""
+
+__version__ = '0.0.1'

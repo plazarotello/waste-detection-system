@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from typing import Tuple, Union
+"""Waste Detection System: Utilities
+
+Collection of general utility functions
+"""
+from typing import List, Tuple, Union, Any
 from pathlib import Path
 from enum import Enum
 from shutil import rmtree
@@ -19,10 +23,22 @@ import cv2
 
 from . import shared_data as base
 
-# -----------------------------------------------------------------------------
 
+def yolo2pascal(x : int, y : int, w : int, h : int, 
+    img_w : int, img_h : int) -> Tuple[int, int, int, int]:
+    """Converts the bounding box from YOLO format to Pascal format
 
-def yolo2pascal(x, y, w, h, img_w, img_h):
+    Args:
+        x (int): x
+        y (int): y
+        w (int): width
+        h (int): height
+        img_w (int): image width
+        img_h (int): image height
+
+    Returns:
+        Tuple[int, int, int, int]: xyxy bounding box
+    """
     x1, y1 = int((x-w/2)*img_w), int((y-h/2)*img_h)
     x2, y2 = int((x+w/2)*img_w), int((y+h/2)*img_h)
 
@@ -38,39 +54,106 @@ def yolo2pascal(x, y, w, h, img_w, img_h):
     return x1, y1, x2, y2
 
 
-def pascal2yolo(x1, y1, x2, y2, img_w, img_h):
-    x, y = ((x2+x1)/(2*img_w)), ((y2+y1)/(2*img_h))
-    w, h = (x2-x1)/img_w, (y2-y1)/img_h
+def pascal2yolo(x1 : int, y1 : int, x2 : int, y2 : int, 
+    img_w : int, img_h : int) -> Tuple[int, int, int, int]:
+    """Converts from Pascal to YOLO format
+
+    Args:
+        x1 (int): x1
+        y1 (int): y1
+        x2 (int): x2
+        y2 (int): y2
+        img_w (int): image width
+        img_h (int): image height
+
+    Returns:
+        Tuple[int, int, int, int]: xywh bounding box
+    """
+    x, y = int((x2+x1)/(2*img_w)), int((y2+y1)/(2*img_h))
+    w, h = int((x2-x1)/img_w), int((y2-y1)/img_h)
 
     return x, y, w, h
 
-# -----------------------------------------------------------------------------
 
+def coco2pascal(x : int, y : int, w : int, 
+    h : int) -> Tuple[int, int, int, int]:
+    """Converts from COCO to Pascal format
 
-def coco2pascal(x, y, w, h):
+    Args:
+        x (int): x
+        y (int): y
+        w (int): width of the bounding box
+        h (int): height of the bounding box
+
+    Returns:
+        Tuple[int, int, int, int]: xyxy bounding box
+    """
     return x, y, x+w, y+h
 
 
-def pascal2coco(x1, y1, x2, y2):
+def pascal2coco(x1 : int, y1 : int, x2 : int, 
+    y2 : int) -> Tuple[int, int, int, int]:
+    """Converts from Pascal to COCO format
+
+    Args:
+        x1 (int): x1
+        y1 (int): y1
+        x2 (int): x2
+        y2 (int): y2
+
+    Returns:
+        Tuple[int, int, int, int]: xywh bounding box
+    """
     return x1, y1, x2-x1, y2-y1
 
-# -----------------------------------------------------------------------------
 
+def yolo2coco(x : int, y : int, w : int, h : int, 
+    img_w : int, img_h : int) -> Tuple[int, int, int, int]:
+    """Converts from YOLO to COCO format
 
-def yolo2coco(x, y, w, h, img_w, img_h):
+    Args:
+        x (int): x
+        y (int): y
+        w (int): width of the bounding box
+        h (int): height of the bounding box
+        img_w (int): image width
+        img_h (int): image height
+
+    Returns:
+        Tuple[int, int, int, int]: xywh bounding box
+    """
     x1, x2, y1, y2 = yolo2pascal(x, y, w, h, img_w, img_h)
     return pascal2coco(x1, x2, y1, y2)
 
 
-def coco2yolo(x, y, w, h, img_w, img_h):
+def coco2yolo(x : int, y : int, w : int, h : int, 
+    img_w : int, img_h : int) -> Tuple[int, int, int, int]:
+    """Converts from COCO to YOLO format
+
+    Args:
+        x (int): x
+        y (int): y
+        w (int): width of the bounding box
+        h (int): height of the bounding box
+        img_w (int): image width
+        img_h (int): image height
+
+    Returns:
+        Tuple[int, int, int, int]: xywh bounding box
+    """
     x1, y1, x2, y2 = coco2pascal(x, y, w, h)
     return pascal2yolo(x1, y1, x2, y2, img_w, img_h)
 
-# -----------------------------------------------------------------------------
 
-# https://pytorch.org/vision/main/auto_examples/plot_repurposing_annotations.html
 
-def show(imgs, figsize=(5,5), title=''):
+def show(imgs : Union[List[torch.Tensor], torch.Tensor], figsize : Tuple[int, int]=(5,5), title : str='') -> None:
+    """Plots the given images side by side in a row. Taken from https://pytorch.org/vision/main/auto_examples/plot_repurposing_annotations.html
+
+    Args:
+        imgs (Union[List[torch.Tensor], torch.Tensor]): list of images to plot
+        figsize (Tuple[int, int], optional): size of the overall figure. Defaults to ``(5,5)``.
+        title (str, optional): title of the overall figure. Defaults to ``''``.
+    """
     if not isinstance(imgs, list):
         imgs = [imgs]
     (fs_x, fs_y) = figsize
@@ -89,7 +172,17 @@ def show(imgs, figsize=(5,5), title=''):
 
 def plot_image_with_annotations(image : Union[Path,str], 
                                 annotations : pd.DataFrame,
-                                plot : bool = True):
+                                plot : bool = True) -> Union[torch.Tensor, None]:
+    """Plots the given image with all its annotations. Taken from https://pytorch.org/vision/main/auto_examples/plot_repurposing_annotations.html
+
+    Args:
+        image (Union[Path,str]): path of the image
+        annotations (pd.DataFrame): bounding boxes and labels of each annotation
+        plot (bool, optional): if must plot or return. Defaults to ``True``.
+
+    Returns:
+        Union[torch.Tensor, None]: ``None`` when plot=``True``, ``torch.Tensor`` when plot=``False``
+    """
     img = read_image(str(image))
     
     bounding_boxes = []
@@ -113,7 +206,13 @@ def plot_image_with_annotations(image : Union[Path,str],
     else: return result
 
 
-def plot_data_sample(sample_imgs: pd.DataFrame, images_df: pd.DataFrame):
+def plot_data_sample(sample_imgs: pd.DataFrame, images_df: pd.DataFrame) -> None:
+    """Plots some sample images with its corresponding annotations. Taken from https://pytorch.org/vision/main/auto_examples/plot_repurposing_annotations.html
+
+    Args:
+        sample_imgs (pd.DataFrame): sample images (only the path property is taken into account)
+        images_df (pd.DataFrame): dataset from which to extract the annotations
+    """
     images = []
     for (_, img) in sample_imgs.iterrows():
         anns : pd.DataFrame = images_df[images_df.path == img.path]  # type: ignore
@@ -122,11 +221,27 @@ def plot_data_sample(sample_imgs: pd.DataFrame, images_df: pd.DataFrame):
     show(images, title='Muestra de los datos')
         
 
-# -----------------------------------------------------------------------------
+
 DATASET_TYPES = Enum('DatasetTypes', 'CANDIDATE FINAL COMPLEMENTARY')
+"""enum: type of dataset, a choice between ``CANDIDATE``, ``FINAL`` (ZeroWaste) and ``COMPLEMENTARY`` (ResortIT)
+"""
 
 def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : bool = True, 
                             dataset_type : DATASET_TYPES = DATASET_TYPES.CANDIDATE) -> pd.Series:
+    """Converts an image of the dataset to JPEG images and stores it in the corresponding folder. Can be resized as well.
+
+    Args:
+        row (pd.Series): row corresponding to an annotation
+        resize (bool, optional): if the image must be resized. Defaults to ``True``.
+        labelled (bool, optional): if the image is labelled. Important for the resizing command. Defaults to ``True``.
+        dataset_type (DATASET_TYPES, optional): type of dataset. Defaults to ``DATASET_TYPES.CANDIDATE``.
+
+    Returns:
+        pd.Series: row with properties updated
+    
+    Raises:
+        AttributeError: if dataset_type is not amongst the ones defined.
+    """
     base.CANDIDATE_DATASET.mkdir(parents=True, exist_ok=True)
     base.COMP_DATASET.mkdir(parents=True, exist_ok=True)
     base.FINAL_DATASET.mkdir(parents=True, exist_ok=True)
@@ -139,7 +254,7 @@ def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : boo
     elif dataset_type == DATASET_TYPES.FINAL:
         path_part = base.FINAL_DATASET
     else:
-        raise 'No dataset type'  # type: ignore
+        raise AttributeError('No dataset type')
 
     current_path = Path(row.path)
     prefix = 'undefined'
@@ -153,7 +268,7 @@ def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : boo
     if resize:
         img = resize_with_pad(img, (base.IMG_HEIGHT, base.IMG_WIDTH))
     img.save(new_path, 'jpeg')
-    bbox = (0.0, 0.0, 0.0, 0.0)
+    bbox = (0, 0, 0, 0)
     if labelled:
         bbox = coco2yolo(row['bbox-x'], row['bbox-y'], row['bbox-w'], row['bbox-h'], 
                             row['width'], row['height'])
@@ -169,16 +284,18 @@ def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : boo
     row.path = new_path
     return row
 
-# https://gist.github.com/IdeaKing/11cf5e146d23c5bb219ba3508cca89ec
-def resize_with_pad(image, new_shape: Tuple[int, int], 
+def resize_with_pad(image : Any, new_shape: Tuple[int, int], 
                     padding_color: Tuple[int, int, int] = (0, 0, 0)):
     """Maintains aspect ratio and resizes with padding.
+    Taken from: https://gist.github.com/IdeaKing/11cf5e146d23c5bb219ba3508cca89ec
+
     Params:
-        image: Image to be resized.
-        new_shape: Expected (width, height) of new image.
-        padding_color: Tuple in BGR of padding color
+        image (Any): Image to be resized.
+        new_shape (Tuple[int, int]): Expected (width, height) of new image.
+        padding_color (Tuple[int, int, int]): Tuple in BGR of padding color
+
     Returns:
-        image: Resized image with padding
+        image (Image): Resized image with padding
     """
     image = np.array(image)
     original_shape = (image.shape[1], image.shape[0])
@@ -193,6 +310,8 @@ def resize_with_pad(image, new_shape: Tuple[int, int],
     return Image.fromarray(image)
 
 def clean_datasets():
+    """Removes the different folders for storing the different types of datasets
+    """
     rmtree(base.CANDIDATE_DATASET, ignore_errors=True)
     rmtree(base.FINAL_DATASET, ignore_errors=True)
     rmtree(base.COMP_DATASET, ignore_errors=True)
