@@ -119,12 +119,7 @@ class WasteDetectionModule(pl.LightningModule):
 
         # Inference
         preds = self.model(x)
-        nms_predictions = []
-        for pred in preds:
-            nms_predictions.append(apply_nms(target=
-                    apply_score_threshold(target=pred, 
-                        score_threshold=self.score_threshold), 
-                iou_threshold=self.iou_threshold))
+        nms_predictions = self.apply_thresholds(preds)
 
         self.map_metric.update(preds=nms_predictions, target=y)
 
@@ -150,12 +145,7 @@ class WasteDetectionModule(pl.LightningModule):
 
         # Inference
         preds = self.model(x)
-        nms_predictions = []
-        for pred in preds:
-            nms_predictions.append(apply_nms(target=
-                    apply_score_threshold(target=pred, 
-                        score_threshold=self.score_threshold), 
-                iou_threshold=self.iou_threshold))
+        nms_predictions = self.apply_thresholds(preds)
 
         self.map_metric.update(preds=nms_predictions, target=y)
 
@@ -168,7 +158,15 @@ class WasteDetectionModule(pl.LightningModule):
         self.log("Test_metrics", computed_map)
 
 
-    def apply_thresholds(self, predictions):
+    def apply_thresholds(self, predictions: List[Dict]):
+        """Apply score threshold and IoU threshold to the predictions to filter the irrelevant ones
+
+        Args:
+            predictions (List[Dict]): predictions
+
+        Returns:
+            List[Dict]: predictions filtered out from NMS and score threshold 
+        """
         nms_predictions = []
         for pred in predictions:
             cpu_prediction= {
@@ -180,6 +178,8 @@ class WasteDetectionModule(pl.LightningModule):
                     apply_score_threshold(target=cpu_prediction, 
                         score_threshold=self.score_threshold), 
                 iou_threshold=self.iou_threshold))
+        
+        return nms_predictions
 
 
     def configure_optimizers(self):
