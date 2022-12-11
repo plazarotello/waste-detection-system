@@ -438,3 +438,4 @@ unnamed-chunk*.png
 .RDataTmp
 *.pt
 *.ckpt
+*.secret
