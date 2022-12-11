@@ -437,3 +437,4 @@ unnamed-chunk*.pdf
 unnamed-chunk*.png
 .RDataTmp
 *.pt
+*.ckpt
