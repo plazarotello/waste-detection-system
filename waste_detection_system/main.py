@@ -203,7 +203,7 @@ def load_weights_from_checkpoint(checkpoint_path : Union[str, Path],
         module = WasteDetectionModule(
             model=models.get_base_model(num_classes, selected_model, 1), 
             train_dataset=fake_df, val_dataset=None, batch_size=128, lr=1, 
-            monitor_metric='bbox_regression')
+            monitor_metric='training_loss')
         checkpoint = torch.load(checkpoint_path)
         module.load_state_dict(checkpoint['state_dict'])
 
