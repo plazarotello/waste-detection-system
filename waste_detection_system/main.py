@@ -68,7 +68,7 @@ def configure(name: str, config: Union[Path, str]) -> Dict[str, Any]:
 
 
 def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path, str],
-    selected_model : models.AVAILABLE_MODELS, num_classes : int, tll : int,
+    selected_model : base.AVAILABLE_MODELS, num_classes : int, tll : int,
     metric : str, find_lr : bool = True, find_batch_size : bool = True,
     weights: Union[os.PathLike, str, Any, None] = None):
     """Searches optimal hyperparameters (namely maximum batch size an optimal 
@@ -78,7 +78,7 @@ def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path,
         name (str): name of the task
         dataset (pd.DataFrame): training dataset to optimize for
         config (Union[Path, str]): path to the configuration file
-        selected_model (models.AVAILABLE_MODELS): model for the task
+        selected_model (base.AVAILABLE_MODELS): model for the task
         num_classes (int): number of classes in the dataset
         tll (int): Transfer Learning Level.
                     TLL = 0 : train from scratch (all layers)
@@ -123,7 +123,7 @@ def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path,
 
 def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str, 
             config: Union[Path, str], resortit_zw : int, metric : str,
-            selected_model : models.AVAILABLE_MODELS, num_classes : int, tll : int,
+            selected_model : base.AVAILABLE_MODELS, num_classes : int, tll : int,
             limit_validation : Union[bool, float] = False,
             weights: Union[os.PathLike, str, Any,  None] = None):
     """Trains a selected model
@@ -136,7 +136,7 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
         resortit_zw (int): ``0`` if ResortIT dataset, ``1`` if ZeroWaste
                             Used for neptune.ai logger
         metric (str): metric to optimize
-        selected_model (models.AVAILABLE_MODELS): model to train
+        selected_model (base.AVAILABLE_MODELS): model to train
         num_classes (int): number of classes in the dataset
         tll (int): Transfer Learning Level.
                     TLL = 0 : train from scratch (all layers)
@@ -185,12 +185,12 @@ def save_weights(weights : Any, save_path : Union[str, Path]):
 
 
 def load_weights_from_checkpoint(checkpoint_path : Union[str, Path], 
-            selected_model : models.AVAILABLE_MODELS, num_classes : int) -> Dict[str, Any]:
+            selected_model : base.AVAILABLE_MODELS, num_classes : int) -> Dict[str, Any]:
     """Loads the selected weights in the selected model
 
     Args:
         checkpoint_path (Union[str, Path]): path to the checkpoint holding the weights or the weights directly
-        selected_model (models.AVAILABLE_MODELS): model in which to load the weights
+        selected_model (base.AVAILABLE_MODELS): model in which to load the weights
         num_classes (int): number of classes of the model
 
     Returns:

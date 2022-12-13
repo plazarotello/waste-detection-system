@@ -2,11 +2,10 @@
 
 """Waste Detection System: Constants
 """
+from enum import Enum
 from shutil import rmtree
 from pathlib import Path
 import json
-
-from .models import AVAILABLE_MODELS
 
 SEED = 11
 """int: global seed
@@ -20,6 +19,15 @@ IMG_WIDTH = 640
 """
 IMG_HEIGHT = 640
 """int: pixels of height for resizing images
+"""
+
+AVAILABLE_MODELS = Enum('Models', 'FASTERRCNN FCOS RETINANET SSD SVM_SSD KNN_SSD SVM_FASTERRCNN KNN_FASTERRCNN')
+"""enum: available models: ``FasterRCNN``, ``FCOS``, ``RetinaNet``, ``SSD``, ``SVM_SSD``, 
+        ``KNN_SSD``, ``SVM_FASTERRCNN``, ``KNN_FASTERRCNN``
+"""
+
+AVAILABLE_CLASSIFIERS = Enum('Classifiers', 'SVM KNN')
+"""enum available classifiers: ``SVM``, ``KNN``
 """
 
 ROOT = Path('.')
