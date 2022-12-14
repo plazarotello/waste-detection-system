@@ -21,7 +21,7 @@ from PIL import Image
 import cv2
 
 
-from . import shared_data as base
+from waste_detection_system import shared_data as base
 
 
 def yolo2pascal(x : int, y : int, w : int, h : int, 

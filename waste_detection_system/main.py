@@ -14,10 +14,12 @@ from codecarbon import EmissionsTracker
 import pandas as pd
 import torch
 
-from . import shared_data as base
-from . import models
-from . import trainer
-from .waste_detection_module import WasteDetectionModule
+
+from waste_detection_system import shared_data as base
+from waste_detection_system import models
+from waste_detection_system import trainer
+from waste_detection_system.waste_detection_module import WasteDetectionModule
+from waste_detection_system.feature_extractor import HybridDLModel
 
 
 
@@ -80,12 +82,11 @@ def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path,
         config (Union[Path, str]): path to the configuration file
         selected_model (base.AVAILABLE_MODELS): model for the task
         num_classes (int): number of classes in the dataset
-        tll (int): Transfer Learning Level.
-                    TLL = 0 : train from scratch (all layers)
-                    TLL = 1 : use transfer learning and train only the 
-                    classification and regression heads
-                    TLL > 1 : use fine-tuning and train the heads as well as
-                    some more layers. MINIMUM = 2, MAXIMUM = 5
+        tll (int): Transfer Learning Level, coded as:
+        
+                        - TLL = 0 : train from scratch (all layers)
+                        - TLL = 1 : use transfer learning and train only the classification and regression heads
+                        - TLL > 1 : use fine-tuning and train the heads as well as some more layers. MINIMUM = 2, MAXIMUM = 5
         metric (str): metric to monitor
         find_lr (bool, optional): if the task must find an optimal initial learning rate. 
                                 Defaults to ``True``.
@@ -170,6 +171,48 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
         val_dataset=val_dataset, config=configuration, limit_validation=limit_validation,
         neptune_project=base.NEPTUNE_PROJECTS[selected_model][resortit_zw], metric=metric)
     tracker.stop()
+
+
+def train_hybrid(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str, 
+                config: Union[Path, str], resortit_zw : int, num_classes : int,
+                selected_model : base.AVAILABLE_MODELS, 
+                selected_classifier : base.AVAILABLE_CLASSIFIERS,
+                weights: Union[os.PathLike, str, Any,  None] = None) -> HybridDLModel:
+    """Trains a selected hybrid model
+
+    Args:
+        train_dataset (pd.DataFrame): dataset used for training
+        val_dataset (pd.DataFrame): dataset used for validation
+        name (str): name of the task
+        config (Union[Path, str]): path to the configuration JSON file
+        selected_model (base.AVAILABLE_MODELS): model to train
+        num_classes (int): number of classes in the dataset
+        weights (Union[os.PathLike, str, Any,  None], optional): weights to initialize the model with. 
+                                                                Defaults to ``None``.
+    """
+    assert weights is not None
+
+    configuration = configure(name, config)
+    configuration['epochs'] = 1
+    if weights:
+        if type(weights) is os.PathLike or type(weights) is str:
+            weights = torch.load(weights)
+    model = models.get_hybrid_model(num_classes=num_classes, chosen_model=selected_model,
+            chosen_classifier=selected_classifier, weights=weights)
+    assert model is not None
+    
+    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU else None
+    
+    tracker = EmissionsTracker(project_name=name, experiment_id='train', gpu_ids=gpu_ids, 
+        log_level='error', tracking_mode='process', measure_power_secs=30)  # type: ignore
+
+    tracker.start()
+    model = trainer.train_hybrid(model, train_dataset, val_dataset)
+    tracker.stop()
+    return model
+
+
+
 
 
 

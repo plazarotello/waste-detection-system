@@ -18,7 +18,7 @@ import torch
 from torchvision import transforms
 from torch.utils.data import Dataset
 
-from . import shared_data as base
+from waste_detection_system import shared_data as base
 
 
 class WasteDetectionDataset(Dataset):

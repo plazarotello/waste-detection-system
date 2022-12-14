@@ -1,10 +1,37 @@
 # -*- coding: utf-8 -*-
 
-"""Waste Detection System: Constants
 """
+This script holds different constants and enumerators needed in the
+rest of the scripts in the module. It defines the directories's structure 
+as such:
+
+    - candidate-dataset: temporary folder to hold a dataset while EDA
+    - complementary-dataset: ResortIT dataset ready for training
+    - config
+        - models: configurations for the models
+        - config.json: general configuration
+    - dataset: ZeroWaste dataset ready for training
+    - raw-datasets
+        - cig_butts
+        - CompostNet
+        - drinking-waste
+        - ResortIt
+        - TACO
+        - Trashbox-metal
+        - WasteClassification
+        - zero-waste
+            - zerowaste-f
+    - results: holds the results
+        - final_dataset.csv
+    - waste_detection_system: the source code
+    - neptune.secret: plain text file with the API key
+
+"""
+
 from enum import Enum
 from shutil import rmtree
 from pathlib import Path
+import os
 import json
 
 SEED = 11
@@ -21,26 +48,24 @@ IMG_HEIGHT = 640
 """int: pixels of height for resizing images
 """
 
-AVAILABLE_MODELS = Enum('Models', 'FASTERRCNN FCOS RETINANET SSD SVM_SSD KNN_SSD SVM_FASTERRCNN KNN_FASTERRCNN')
-"""enum: available models: ``FasterRCNN``, ``FCOS``, ``RetinaNet``, ``SSD``, ``SVM_SSD``, 
-        ``KNN_SSD``, ``SVM_FASTERRCNN``, ``KNN_FASTERRCNN``
+AVAILABLE_MODELS = Enum('Models', 'FASTERRCNN FCOS RETINANET SSD')
+"""enum: available models: ``FasterRCNN``, ``FCOS``, ``RetinaNet``, ``SSD``
 """
 
 AVAILABLE_CLASSIFIERS = Enum('Classifiers', 'SVM KNN')
 """enum available classifiers: ``SVM``, ``KNN``
 """
 
-ROOT = Path('.')
-"""Path: root of the project
-"""
+ROOT = Path(os.path.dirname(__file__)).parent
+
+
 RESULTS = ROOT / Path('results')
-"""Path: path to store the results
-"""
+
+
 
 with open(ROOT/'neptune.secret', 'r', encoding='utf-8-sig') as f:
     NEPTUNE_API_KEY = f.read()
-    """str: API key secret for neptune.ai
-    """
+
 
 NEPTUNE_PROJECTS = {
     AVAILABLE_MODELS.FASTERRCNN : ['plazarotello/fasterrcnn-resortit', 
@@ -52,76 +77,37 @@ NEPTUNE_PROJECTS = {
     AVAILABLE_MODELS.FCOS : ['plazarotello/fcos-resortit', 
                             'plazarotello/fcos-zerowaste'],
 }
-"""dict: neptune.ai project names for each model and dataset.
-Stored as a list, first index is ResortIT and second index is ZeroWaste
-"""
+
 
 # -----------------------------------------------------------------------------
 # Raw datasets paths
 # =============================================================================
 
 RAW_ROOT = ROOT / Path('raw-datasets')
-"""Path: directory in which to find the raw datasets. Won't be regenerated/destroyed/modified.
-"""
+
 CANDIDATE_DATASET = ROOT / Path('candidate-dataset')
-"""Path: directory in which to store the candidate datasets
-"""
 COMP_DATASET = ROOT / Path('complementary-dataset')
-"""Path: directory in which to store the complementary dataset (ResortIT)
-"""
 FINAL_DATASET = ROOT / Path('dataset')
-"""Path: directory in which to store the final dataset (ZeroWaste)
-"""
+
 
 CIG_BUTTS = RAW_ROOT / 'cig_butts'
-"""Path: directory that contains the images/annotations of the Cig_Butts dataset
-"""
 DRINKING_WASTE = RAW_ROOT / 'drinking-waste'
-"""Path: directory that contains the images/annotations of the Drinking Waste dataset
-"""
 TACO = RAW_ROOT / 'TACO'
-"""Path: directory that contains the images/annotations of the TACO dataset
-"""
 ZERO_WASTE = RAW_ROOT / 'zero-waste' / 'zerowaste-f'
-"""Path: directory that contains the images/annotations of the ZeroWaste dataset
-"""
 TRASHBOX_METAL = RAW_ROOT / 'Trashbox-metal'
-"""Path: directory that contains the images/annotations of the Trashbox-metal dataset
-"""
 WASTE_CL = RAW_ROOT / 'WasteClassification'
-"""Path: directory that contains the images/annotations of the WasteClassification dataset
-"""
 COMPOSTNET = RAW_ROOT / 'CompostNet'
-"""Path: directory that contains the images/annotations of the CompostNet dataset
-"""
 RESORTIT = RAW_ROOT / 'ResortIt'
-"""Path: directory that contains the images/annotations of the ResortIT dataset
-"""
+
 
 CIG_BUTTS_CSV = RAW_ROOT / 'cig-butts.csv'
-"""Path: file that contains the formatted Cig_Butts dataset
-"""
 DRINKING_WASTE_CSV = RAW_ROOT / 'drinking-waste.csv'
-"""Path: file that contains the formatted Drinking Waste dataset
-"""
 TACO_CSV = RAW_ROOT / 'TACO.csv'
-"""Path: file that contains the formatted TACOI dataset
-"""
 ZERO_WASTE_CSV = RAW_ROOT / 'zerowaste.csv'
-"""Path: file that contains the formatted ZeroWaste dataset
-"""
 TRASHBOX_METAL_CSV = RAW_ROOT / 'trashbox-metal.csv'
-"""Path: file that contains the formatted Trashbox-metal dataset
-"""
 WASTE_CL_CSV = RAW_ROOT / 'waste-cl.csv'
-"""Path: file that contains the formatted Waste Classification dataset
-"""
 COMPOSTNET_CSV = RAW_ROOT / 'compostnet.csv'
-"""Path: file that contains the formatted CompostNet dataset
-"""
 RESORTIT_CSV = RAW_ROOT / 'resortit.csv'
-"""Path: file that contains the formatted ResortIT dataset
-"""
 
 
 # create directories
@@ -144,15 +130,10 @@ COMPOSTNET.mkdir(parents=True, exist_ok=True)
 # =============================================================================
 
 CONFIG_DIR = ROOT / Path('config')
-"""Path: directory that contains the configuration files
-"""
 
 MODELS_DIR = CONFIG_DIR / Path('models')
-"""Path: directory that contains the model configuration files
-"""
 PSEUDOLABELLING_DIR = CONFIG_DIR / Path('pseudo-labelling')
-"""Path: directory that contains the pseudo-labelling configuration files
-"""
+
 
 # create directories
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -176,8 +157,6 @@ GPU = None
 
 
 def _base_configuration():
-    """obtains and sets the basic configuration from the config file.
-    """
     config_path = CONFIG_DIR / 'config.json'
     with open(config_path, 'r') as f:
         config = json.load(f)
@@ -194,11 +173,7 @@ _base_configuration()
 # =============================================================================
 
 FINAL_DATA_CSV = RESULTS / 'final-dataset.csv'
-"""Path: file with the ZeroWaste dataset
-"""
 COMP_DATA_CSV = RESULTS / 'complementary-dataset.csv'
-"""Path: file with the ResortIT dataset
-"""
 
 # =============================================================================
 # Color constants

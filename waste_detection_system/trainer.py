@@ -15,21 +15,23 @@ from lightning.pytorch.callbacks import (
     ModelCheckpoint
 )
 from lightning.pytorch.loggers import NeptuneLogger
+from torch import Tensor
 from torchvision.models.detection import  FasterRCNN, FCOS, RetinaNet
 from torchvision.models.detection.ssd import SSD
 
 from pandas import DataFrame
 from pathlib import Path
-from typing import Any, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from sklearn.model_selection import train_test_split
 
 import importlib_metadata
 from neptune.new.types import File
 import pathlib
 
-from . import shared_data as base
-from . import waste_detection_module
-from .waste_detection_module import WasteDetectionModule
+from waste_detection_system import shared_data as base
+from waste_detection_system import waste_detection_module
+from waste_detection_system.waste_detection_module import WasteDetectionModule
+from waste_detection_system.feature_extractor import HybridDLModel
 
 
 
@@ -102,6 +104,63 @@ def tune(model: Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataFra
         print(f'Largest batch_size allowed: {batch_scaler}')
 
 
+
+
+def train_hybrid(model : HybridDLModel, train_dataset : DataFrame, val_dataset : DataFrame, 
+        ) -> HybridDLModel:
+    """Trains the model with the given configuration.
+    The training includes model checkpointing for the last epoch and best model regarding the
+    given metric.
+    The configuration dictionary must hold the ``epochs`` key (max epochs to train), 
+    ``lr`` key (learning rate), ``bs`` (batch size to use).
+
+
+    Args:
+        model (Union[FasterRCNN, FCOS, RetinaNet, SSD]): model to train
+        train_dataset (DataFrame): training dataset
+        val_dataset (DataFrame): validation dataset
+        config (dict): configuration dictionary
+        neptune_project (str): name of the project in which to log
+        metric (str): name of the metric to monitor. Usual values: ``Validation_mAP``, 
+                    ``training_loss``, ``bbox_regression`` and ``classification``
+        limit_validation (Union[bool, float], optional): if validation dataset must be limited (``True`` = 25%). Defaults to ``False``.
+
+    Returns:
+        Tuple[Union[Path, str], Trainer]: best model path and the trainer
+    """
+    seed_everything(base.SEED)
+
+    train_loader = waste_detection_module.get_dataloader(train_dataset,
+        batch_size=1)
+    val_loader = waste_detection_module.get_dataloader(val_dataset,
+        batch_size=1)
+    
+    train_images : List[Tensor] = []
+    train_targets : List[Dict[str, Tensor]] = []
+    for image, ground_truth, _ in train_loader:
+        train_images.append(image)
+        train_targets.append(ground_truth)
+    
+    model.train(True)
+    classification_loss = model.forward(images=train_images, 
+        targets=train_targets)['classification_loss'] # type: ignore
+    print(f'Train classification loss: {classification_loss}')
+
+    val_images : List[Tensor] = []
+    val_targets : List[Dict[str, Tensor]] = []
+    for image, ground_truth, _ in val_loader:
+        val_images.append(image)
+        val_targets.append(ground_truth)
+
+    model.eval()
+    val_results : List[Dict[str, Tensor]] = model.forward(images=val_images) # type: ignore
+    val_loss = model.validate(x=val_results, y=val_targets)['classification_loss']
+    print(f'Validation classification loss: {val_loss}')
+
+    return model
+
+
+
 def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataFrame, 
         val_dataset : DataFrame, config : dict, neptune_project : str, metric : str, 
         limit_validation : Union[bool, float] = False) -> Tuple[Union[Path, None], Trainer]:
@@ -138,7 +197,8 @@ def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataF
 
     neptune_logger = NeptuneLogger(
         api_key=base.NEPTUNE_API_KEY,
-        project=neptune_project
+        project=neptune_project,
+        mode='offline'
     )
 
     lit_model = WasteDetectionModule(model=model, train_dataset=train_dataset,

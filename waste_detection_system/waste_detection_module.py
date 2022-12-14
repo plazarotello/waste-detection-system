@@ -16,9 +16,9 @@ from torchvision.models.detection.ssd import SSD
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from torchvision.ops import nms
 
-from . import shared_data as base
-from .waste_detection_dataset import WasteDetectionDataset
-from .transformations import apply_nms, apply_score_threshold
+from waste_detection_system import shared_data as base
+from waste_detection_system.waste_detection_dataset import WasteDetectionDataset
+from waste_detection_system.transformations import apply_nms, apply_score_threshold
 
 
 class WasteDetectionModule(pl.LightningModule):

@@ -11,19 +11,17 @@ Collection of available models in the Waste Detection System:
 
 from typing import Any, Union
 from itertools import chain
-import copy
 
-from torch import nn
 from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights, FasterRCNN
 from torchvision.models.detection import fcos_resnet50_fpn, FCOS_ResNet50_FPN_Weights, FCOS
 from torchvision.models.detection import retinanet_resnet50_fpn_v2, RetinaNet_ResNet50_FPN_V2_Weights, RetinaNet
 from torchvision.models.detection import ssd300_vgg16, SSD300_VGG16_Weights
 from torchvision.models.detection.ssd import SSD
 
-from .custom_ssd import customssd300_vgg16, CustomSSD
-from .shared_data import AVAILABLE_CLASSIFIERS, AVAILABLE_MODELS
-
 from torchinfo import summary
+
+from waste_detection_system.shared_data import AVAILABLE_CLASSIFIERS, AVAILABLE_MODELS
+from waste_detection_system.feature_extractor import FeatureExtractor, HybridDLModel
 
 
 def load_partial_weights(model: Union[FasterRCNN, FCOS, SSD, RetinaNet], weights : Any) -> Union[FasterRCNN, FCOS, SSD, RetinaNet]:
@@ -64,16 +62,21 @@ def pretty_summary(model: Union[FasterRCNN, FCOS, SSD, RetinaNet]):
     Args:
         model (Union[FasterRCNN, FCOS, SSD, RetinaNet]): model
     """
-    if type(model) is CustomSSD:
-        print("Can't print a custom hybrid model")
-        return
     print(summary(model, depth=3, col_names=["num_params", "trainable", "input_size", "output_size"], input_size=[1,300,300], batch_dim=0))
 
-# TRANSFER LEARNING LEVEL:
-# TLL=0 : train from scratch
-# TLL=1 : transfer learning, train only the head
-# TLL>1 : fine-tuning, trains the head plus the (n-1) number of layers from top to bottom
-#         MIN = 2, MAX = 5
+
+
+
+def get_hybrid_model(num_classes : int, chosen_model : AVAILABLE_MODELS, weights : Any,
+    chosen_classifier : AVAILABLE_CLASSIFIERS) -> HybridDLModel:
+    model = get_base_model(num_classes=num_classes, chosen_model=chosen_model,
+                            transfer_learning_level=0)
+    model = load_partial_weights(model, weights)
+    feature_extractor = to_feature_extractor(model)
+    return HybridDLModel(feature_extractor=feature_extractor, classifier_type=chosen_classifier)
+
+
+
 
 def get_base_model(num_classes : int, chosen_model : AVAILABLE_MODELS, 
                     transfer_learning_level : int) -> Union[FasterRCNN, FCOS, SSD, RetinaNet]:
@@ -103,15 +106,32 @@ def get_base_model(num_classes : int, chosen_model : AVAILABLE_MODELS,
                                                                 transfer_learning_level)
     elif chosen_model == AVAILABLE_MODELS.SSD : return get_ssd(num_classes, 
                                                                 transfer_learning_level)
-    elif chosen_model == AVAILABLE_MODELS.SVM_SSD : return get_svmssd(num_classes, 
-                                                                transfer_learning_level)
-    elif chosen_model == AVAILABLE_MODELS.KNN_SSD : return get_knnssd(num_classes, 
-                                                                transfer_learning_level)
-    # elif chosen_model == AVAILABLE_MODELS.SVM_FASTERRCNN : return get_svmfasterrcnn(num_classes, 
-    #                                                             transfer_learning_level)
-    # elif chosen_model == AVAILABLE_MODELS.KNN_FASTERRCNN : return get_knnfasterrcnn(num_classes, 
-    #                                                             transfer_learning_level)
     else: raise ValueError('Model not supported')
+
+
+
+def to_feature_extractor(model: Union[FasterRCNN, FCOS, RetinaNet, SSD]) -> FeatureExtractor:
+    """Wraps the given model in order to obtain the bounding boxes and feature maps associated
+
+    Args:
+        model (Union[FasterRCNN, FCOS, RetinaNet, SSD]): model to use as feature extractor
+
+    Raises:
+        ValueError: if the wrapper is not implemented for the given model type
+
+    Returns:
+        FeatureExtractor: wrapper that returns a dictionary of 'bounding_boxes' and 'features',
+        both of them being lists of tensors
+    """
+    if type(model) is SSD:
+        return FeatureExtractor(model, layer='head.regression_head')
+    if type(model) is FasterRCNN:
+        return FeatureExtractor(model, layer='roi_heads.box_head')
+    raise ValueError('Feature extractor not implemented for this model type')
+
+
+
+
 
 
 def apply_tll_to_fasterrcnn(model: FasterRCNN, transfer_learning_level : int) -> FasterRCNN:
@@ -397,69 +417,6 @@ def get_ssd(num_classes : int, transfer_learning_level : int) -> SSD:
     SSD.model_num_classes = 0  # type: ignore
     model = load_partial_weights(
             model=ssd300_vgg16(num_classes=num_classes+1),
-            weights=SSD300_VGG16_Weights.DEFAULT.get_state_dict(progress=True)
-    )
-    model.model_num_classes = num_classes+1  # type: ignore
-    return apply_tll_to_ssd(model, transfer_learning_level) # type: ignore
-
-
-def get_svmssd(num_classes : int, transfer_learning_level : int) -> CustomSSD:
-    """Constructs a ``SSD`` model with a SVM classifier head
-
-    Args:
-        num_classes (int): number of classes
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
-
-    Returns:
-        CustomSSD: constructed model
-    """
-    return get_custom_ssd(num_classes, transfer_learning_level, AVAILABLE_CLASSIFIERS.SVM)
-
-
-
-def get_knnssd(num_classes : int, transfer_learning_level : int) -> CustomSSD:
-    """Constructs a ``SSD`` model with a kNN classifier head
-
-    Args:
-        num_classes (int): number of classes
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
-
-    Returns:
-        CustomSSD: constructed model
-    """
-    return get_custom_ssd(num_classes, transfer_learning_level, AVAILABLE_CLASSIFIERS.KNN)
-
-
-def get_custom_ssd(num_classes : int, transfer_learning_level : int, 
-                classifier_type : AVAILABLE_CLASSIFIERS) -> CustomSSD:
-    """Constructs a ``SSD`` model with a Machine Learning algorithm as the classifier head
-
-    Args:
-        num_classes (int): number of classes
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
-        classifier_type (AVAILABLE_CLASSIFIERS): selected ML classifier algorithm
-
-    Returns:
-        CustomSSD: constructed model
-    """
-    CustomSSD.model_num_classes = 0  # type: ignore
-    model = load_partial_weights(
-            model=customssd300_vgg16(num_classes=num_classes+1, classifier=classifier_type),
             weights=SSD300_VGG16_Weights.DEFAULT.get_state_dict(progress=True)
     )
     model.model_num_classes = num_classes+1  # type: ignore
