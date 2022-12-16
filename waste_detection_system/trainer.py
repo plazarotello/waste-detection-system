@@ -3,6 +3,7 @@
 import shutil
 from lightning import Trainer
 from lightning.lite.utilities.seed import seed_everything
+from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.callbacks import (
     # EarlyStopping,
     LearningRateMonitor,
@@ -229,7 +230,8 @@ def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataF
             auto_lr_find=False,
             auto_scale_batch_size=False,
             limit_val_batches=limit_validation,
-            check_val_every_n_epoch=10
+            check_val_every_n_epoch=10,
+            fast_dev_run=True
         )
     else:
         trainer = Trainer(
@@ -291,21 +293,28 @@ def test(module : WasteDetectionModule, dataset : DataFrame) -> Any:
         batch_size=1,
         shuffle=False
         )
+    
+    logger = CSVLogger(str(base.RESULTS), name='test', flush_logs_every_n_steps=1)
 
     if base.USE_GPU:
         trainer = Trainer(
             gpus=base.GPU,
             accelerator='gpu',
             auto_lr_find=False,
-            auto_scale_batch_size=False
+            auto_scale_batch_size=False,
+            logger=logger,
+            log_every_n_steps=1
         )
     else:
         trainer = Trainer(
             gpus=base.GPU,
             auto_lr_find=False,
-            auto_scale_batch_size=False
+            auto_scale_batch_size=False,
+            logger=logger,
+            log_every_n_steps=1
         )
-    return trainer.test(model=module, dataloaders=dataloader)
+    trainer.test(model=module, dataloaders=dataloader)
+    return trainer.lightning_module.test_results
 
 
 def log_packages_neptune(neptune_logger : NeptuneLogger):

@@ -53,6 +53,8 @@ class WasteDetectionModule(pl.LightningModule):
         # Model
         self.model = model
 
+        self.test_results = {}
+
         # Train dataset
         self.train_dataset = train_dataset
 
@@ -165,6 +167,10 @@ class WasteDetectionModule(pl.LightningModule):
         self.log("Test_mAP", computed_map['map'])
         self.log("Test_metrics", computed_map)
 
+        self.test_results = computed_map
+
+        return computed_map
+
 
     def apply_thresholds(self, predictions: List[Dict]):
         """Apply score threshold and IoU threshold to the predictions to filter the irrelevant ones
@@ -252,7 +258,7 @@ def get_dataloader(data : DataFrame, batch_size : int, shuffle : bool = True) ->
     """
     mapping = { base.CATS_PAPEL : 1, base.CATS_PLASTICO : 2}
     dataset = WasteDetectionDataset(data=data, mapping=mapping)
-    dataloader = DataLoader(dataset=dataset, batch_size=batch_size,
+    dataloader = DataLoader(dataset=dataset, batch_size=batch_size, pin_memory=True,
         shuffle=shuffle, num_workers=0, collate_fn=collate_double)  # type: ignore
     
     return dataloader

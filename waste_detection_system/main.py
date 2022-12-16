@@ -127,7 +127,7 @@ def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path,
 
     model = base_model
 
-    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU else None
+    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU and base.GPU else None
     tracker = EmissionsTracker(project_name=name, experiment_id=f'hypersearch-{name}', 
         gpu_ids=gpu_ids, log_level='error', tracking_mode='process', 
         measure_power_secs=30, output_file=Path(configuration['results_dir']) / f'{name}-emissions.csv')  # type: ignore
@@ -178,7 +178,7 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
             weights = torch.load(weights)
         model = models.load_partial_weights(model, weights)
     
-    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU else None
+    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU and base.GPU else None
     
     tracker = EmissionsTracker(project_name=name, experiment_id='train', gpu_ids=gpu_ids, 
         log_level='error', tracking_mode='process', measure_power_secs=30)  # type: ignore
@@ -221,7 +221,7 @@ def train_hybrid(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: s
             chosen_classifier=selected_classifier, weights=weights)
     assert model is not None
     
-    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU else None
+    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU and base.GPU else None
     
     tracker = EmissionsTracker(project_name=name, experiment_id='train', gpu_ids=gpu_ids, 
         log_level='error', tracking_mode='process', measure_power_secs=30)  # type: ignore
@@ -277,7 +277,8 @@ def load_weights_from_checkpoint(checkpoint_path : Union[str, Path],
 
 
 
-def test(checkpoint_path : Union[str, Path], test_dataset : pd.DataFrame) -> Any:
+def test(weights : Any, selected_model: models.AVAILABLE_MODELS, 
+        num_classes : int, test_dataset : pd.DataFrame) -> Any:
     """Tests the given dataset against the model in the checkpoint
 
     Args:
@@ -287,6 +288,19 @@ def test(checkpoint_path : Union[str, Path], test_dataset : pd.DataFrame) -> Any
     Returns:
         Any: mAP for the test dataset
     """
-    module = WasteDetectionModule.load_from_checkpoint(checkpoint_path=checkpoint_path)
+    assert weights is not None
+    if weights:
+        if type(weights) is os.PathLike or type(weights) is str:
+            weights = torch.load(weights)
+    
+    base_model = models.get_base_model(num_classes, selected_model, 0)
+    assert base_model is not None
+    if weights:
+        base_model = models.load_partial_weights(base_model, weights)
+
+    fake_df = pd.DataFrame({})
+    module = WasteDetectionModule(model=base_model, 
+                                train_dataset=fake_df, val_dataset=None, 
+                                batch_size=1, lr=1, monitor_metric='training_loss')
     return trainer.test(module=module, dataset=test_dataset)
     
