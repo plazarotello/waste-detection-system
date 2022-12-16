@@ -134,8 +134,11 @@ def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path,
     
 
     tracker.start()
-    trainer.tune(model=model, train_dataset=dataset, monitor_metric = metric, find_lr=find_lr, 
-                find_batch_size=find_batch_size)
+    try:
+        trainer.tune(model=model, train_dataset=dataset, monitor_metric = metric, find_lr=find_lr, 
+                    find_batch_size=find_batch_size)
+    except Exception:
+        pass
     tracker.stop()
 
 
@@ -181,9 +184,12 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
         log_level='error', tracking_mode='process', measure_power_secs=30)  # type: ignore
 
     tracker.start()
-    best_model_path, model_trainer = trainer.train(model=model, train_dataset=train_dataset, 
-        val_dataset=val_dataset, config=configuration, limit_validation=limit_validation,
-        neptune_project=base.NEPTUNE_PROJECTS[selected_model][resortit_zw], metric=metric)
+    try:
+        trainer.train(model=model, train_dataset=train_dataset, val_dataset=val_dataset, 
+            config=configuration, limit_validation=limit_validation,
+            neptune_project=base.NEPTUNE_PROJECTS[selected_model][resortit_zw], metric=metric)
+    except Exception:
+        pass
     tracker.stop()
 
 
@@ -221,7 +227,10 @@ def train_hybrid(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: s
         log_level='error', tracking_mode='process', measure_power_secs=30)  # type: ignore
 
     tracker.start()
-    model = trainer.train_hybrid(model, train_dataset, val_dataset)
+    try:
+        model = trainer.train_hybrid(model, train_dataset, val_dataset)
+    except Exception:
+        pass
     tracker.stop()
     return model
 
@@ -265,3 +274,19 @@ def load_weights_from_checkpoint(checkpoint_path : Union[str, Path],
         module.load_state_dict(checkpoint['state_dict'])
 
     return module.model.state_dict()
+
+
+
+def test(checkpoint_path : Union[str, Path], test_dataset : pd.DataFrame) -> Any:
+    """Tests the given dataset against the model in the checkpoint
+
+    Args:
+        checkpoint_path (Union[str, Path]): path to the checkpoint model
+        test_dataset (pd.DataFrame): dataset to test
+
+    Returns:
+        Any: mAP for the test dataset
+    """
+    module = WasteDetectionModule.load_from_checkpoint(checkpoint_path=checkpoint_path)
+    return trainer.test(module=module, dataset=test_dataset)
+    

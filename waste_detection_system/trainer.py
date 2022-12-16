@@ -276,11 +276,11 @@ def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataF
     return best_model_path, trainer
 
 
-def test(trainer : Trainer, dataset : DataFrame) -> Any:
+def test(module : WasteDetectionModule, dataset : DataFrame) -> Any:
     """Tests the dataset in the given trainer
 
     Args:
-        trainer (Trainer): trainer to test
+        module (WasteDetectionModule): trainer to test
         dataset (DataFrame): test dataset
 
     Returns:
@@ -291,8 +291,21 @@ def test(trainer : Trainer, dataset : DataFrame) -> Any:
         batch_size=1,
         shuffle=False
         )
-    
-    return trainer.test(ckpt_path='best', dataloaders=dataloader)
+
+    if base.USE_GPU:
+        trainer = Trainer(
+            gpus=base.GPU,
+            accelerator='gpu',
+            auto_lr_find=False,
+            auto_scale_batch_size=False
+        )
+    else:
+        trainer = Trainer(
+            gpus=base.GPU,
+            auto_lr_find=False,
+            auto_scale_batch_size=False
+        )
+    return trainer.test(model=module, dataloaders=dataloader)
 
 
 def log_packages_neptune(neptune_logger : NeptuneLogger):
