@@ -1,12 +1,34 @@
 # -*- coding: utf-8 -*-
 
-"""Waste Detection System: models
+"""
+.. _fasterrcnn: https://pytorch.org/vision/main/models/generated/torchvision.models.detection.fasterrcnn_resnet50_fpn.html#torchvision.models.detection.fasterrcnn_resnet50_fpn
+.. _fcos: https://pytorch.org/vision/main/models/generated/torchvision.models.detection.fcos_resnet50_fpn.html#torchvision.models.detection.fcos_resnet50_fpn
+.. _retinanet: https://pytorch.org/vision/main/models/generated/torchvision.models.detection.retinanet_resnet50_fpn_v2.html#torchvision.models.detection.retinanet_resnet50_fpn_v2
+.. _ssd: https://pytorch.org/vision/main/models/generated/torchvision.models.detection.ssd300_vgg16.html#torchvision.models.detection.ssd300_vgg16
+.. _knn: https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
+.. _svm: https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html
 
-Collection of available models in the Waste Detection System:
-- Faster R-CNN
-- FCOS
-- RetinaNet
-- SSD
+Collection of allowed object detection models in the Waste Detection System, 
+as well as functions to freeze and unfreeze layers given a Transfer Learning Level,
+a model creation factory for object detection models and hybrid Deep Learning 
+models.
+
+Deep Learning object detection models
+    - Faster R-CNN : `Faster R-CNN Pytorch documentation <fasterrcnn_>`_
+    - FCOS : `FCOS Pytorch documentation <fcos_>`_
+    - RetinaNet : `RetinaNet Pytorch documentation <retinanet_>`_
+    - SSD : `SSD Pytorch documentation <ssd_>`_
+
+Hybrid Deep Learning/traditional Machine Learning models
+    It takes a Deep Learning object detection model (of the mentioned above) and
+    a traditional Machine Learning classifier of the following:
+        - k-Nearest Neighbors Classifier: `scikit-learn documentation <knn_>`_
+        - SVM Classifier: `scikit-learn documentation <svm_>`_
+
+.. important::
+    To train a hybrid Deep Learning model, it is necessary to fully train the object 
+    detector and only then, with the best weights saved, use it to create the feature
+    extractor of the hybrid model.
 """
 
 from typing import Any, Union
@@ -47,7 +69,7 @@ def print_stats(model: Union[FasterRCNN, FCOS, SSD, RetinaNet], transfer_learnin
 
     Args:
         model (Union[FasterRCNN, FCOS, SSD, RetinaNet]): model
-        transfer_learning_level (int): transfer learning level or TLL
+        transfer_learning_level (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
     """
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total_params = sum(p.numel() for p in model.parameters())
@@ -85,12 +107,7 @@ def get_base_model(num_classes : int, chosen_model : AVAILABLE_MODELS,
     Args:
         num_classes (int): number of classes
         chosen_model (AVAILABLE_MODELS): selected model
-        transfer_learning_level (int): transfer learning level or TLL.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
+        transfer_learning_level (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
 
     Returns:
         Union[FasterRCNN, FCOS, SSD, RetinaNet]: constructed model
@@ -139,15 +156,12 @@ def apply_tll_to_fasterrcnn(model: FasterRCNN, transfer_learning_level : int) ->
 
     Args:
         model (FasterRCNN): model
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
+        transfer_learning_level (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
 
     Returns:
         FasterRCNN: model with the correct number of layers frozen/unfrozen
+    
+    :meta private:
     """
     # TLL=0 : train from scratch
     if transfer_learning_level == 0:
@@ -197,15 +211,12 @@ def apply_tll_to_fcos_retinanet(model: Union[FCOS, RetinaNet], transfer_learning
 
     Args:
         model (Union[FCOS, RetinaNet]): model
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
+        transfer_learning_level (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
 
     Returns:
         Union[FCOS, RetinaNet]: model with the correct number of layers frozen/unfrozen
+    
+    :meta private:
     """
     # TLL=0 : train from scratch
     if transfer_learning_level == 0:
@@ -263,15 +274,12 @@ def apply_tll_to_ssd(model: SSD, transfer_learning_level : int) -> SSD:
 
     Args:
         model (SSD): model
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
+        transfer_learning_level (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
 
     Returns:
         SSD: model with the correct number of layers frozen/unfrozen
+        
+    :meta private:
     """
     # TLL=0 : train from scratch
     if transfer_learning_level == 0:
@@ -332,15 +340,12 @@ def get_fasterrcnn(num_classes : int, transfer_learning_level : int) -> FasterRC
 
     Args:
         num_classes (int): number of classes
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
+        transfer_learning_level (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
 
     Returns:
         FasterRCNN: constructed model
+        
+    :meta private:
     """
     FasterRCNN.model_num_classes = 0  # type: ignore
     model = load_partial_weights(
@@ -356,15 +361,12 @@ def get_fcos(num_classes : int, transfer_learning_level : int) -> FCOS:
 
     Args:
         num_classes (int): number of classes
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
+        transfer_learning_level (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
 
     Returns:
         FCOS: constructed model
+        
+    :meta private:
     """
     FCOS.model_num_classes = 0  # type: ignore
     model = load_partial_weights(
@@ -380,15 +382,12 @@ def get_retinanet(num_classes : int, transfer_learning_level : int) -> RetinaNet
 
     Args:
         num_classes (int): number of classes
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
+        transfer_learning_level (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
 
     Returns:
         RetinaNet: constructed model
+        
+    :meta private:
     """
     RetinaNet.model_num_classes = 0  # type: ignore
     model = load_partial_weights(
@@ -404,15 +403,12 @@ def get_ssd(num_classes : int, transfer_learning_level : int) -> SSD:
 
     Args:
         num_classes (int): number of classes
-        transfer_learning_level (int): Transfer Learning Level.
-                                        TLL = 0 : train from scratch (all layers)
-                                        TLL = 1 : use transfer learning and train only the 
-                                        classification and regression heads
-                                        TLL > 1 : use fine-tuning and train the heads as well as
-                                        some more layers. MINIMUM = 2, MAXIMUM = 5
-
+        transfer_learning_level (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
+        
     Returns:
         SSD: constructed model
+        
+    :meta private:
     """
     SSD.model_num_classes = 0  # type: ignore
     model = load_partial_weights(

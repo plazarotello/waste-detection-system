@@ -1,9 +1,30 @@
 # -*- coding: utf-8 -*-
 
-"""Waste Detection System
+"""
+Collection of entry points to the module. The end user should use 
+only these functions to interact with the module.
 
-Collection of entry points to the module, namely the hyperparameter seach 
-and trainer. 
+Hyperparameter search
+    The ``hyperparameter_search()`` function is used to determine the
+    best starting learning rate and the maximum batch size allowed.
+
+    This batch size will be halved when training in order to 
+    accomodate for a faster validation phase, using half the batch size
+    in the train phase and the other half in the validation phase.
+
+Training scripts
+    The ``train()`` and ``train_hybrid()`` functions are used to train
+    the Deep Learning neural network based object detection model and
+    the traditional Machine Learning classifier, respectively.
+
+Loading/saving weights
+    The weights loading is managed by ``load_weights_from_checkpoint()``,
+    which accepts both the .pt model weights and .ckpt checkpoint from
+    the lightning.ai training module.
+
+    The weights saving is used only for saving the model weights in .pt
+    format, since the .ckpt checkpoint from the lightning.ai module is
+    already automatically saved by the checkpointing callback.
 """
 
 from pathlib import Path
@@ -33,6 +54,8 @@ def configure(name: str, config: Union[Path, str]) -> Dict[str, Any]:
 
     Returns:
         Dict[str, Any]: a dictionary with the configuration from the JSON file
+    
+    :meta private:
     """
     configuration = Path(config)
     chk_dir = configuration.parent.resolve()
@@ -78,22 +101,18 @@ def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path,
 
     Args:
         name (str): name of the task
-        dataset (pd.DataFrame): training dataset to optimize for
+        dataset (DataFrame): training dataset to optimize for
         config (Union[Path, str]): path to the configuration file
-        selected_model (base.AVAILABLE_MODELS): model for the task
+        selected_model (AVAILABLE_MODELS): model for the task
         num_classes (int): number of classes in the dataset
-        tll (int): Transfer Learning Level, coded as:
-        
-                        - TLL = 0 : train from scratch (all layers)
-                        - TLL = 1 : use transfer learning and train only the classification and regression heads
-                        - TLL > 1 : use fine-tuning and train the heads as well as some more layers. MINIMUM = 2, MAXIMUM = 5
+        tll (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
         metric (str): metric to monitor
         find_lr (bool, optional): if the task must find an optimal initial learning rate. 
-                                Defaults to ``True``.
+                                Defaults to ``True``
         find_batch_size (bool, optional): if the task must find the maximum batch size. 
-                                Defaults to ``True``.
-        weights (Union[os.PathLike, str, Any, None], optional): weights to apply to the model.
-                                Defaults to None.
+                                Defaults to ``True``
+        weights (Union[PathLike, str, Any, None], optional): weights to apply to the model.
+                                Defaults to None
     """
     configuration = configure(name, config)
 
@@ -130,26 +149,21 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
     """Trains a selected model
 
     Args:
-        train_dataset (pd.DataFrame): dataset used for training
-        val_dataset (pd.DataFrame): dataset used for validation
+        train_dataset (DataFrame): dataset used for training
+        val_dataset (DataFrame): dataset used for validation
         name (str): name of the task
         config (Union[Path, str]): path to the configuration JSON file
         resortit_zw (int): ``0`` if ResortIT dataset, ``1`` if ZeroWaste
                             Used for neptune.ai logger
         metric (str): metric to optimize
-        selected_model (base.AVAILABLE_MODELS): model to train
+        selected_model (AVAILABLE_MODELS): model to train
         num_classes (int): number of classes in the dataset
-        tll (int): Transfer Learning Level.
-                    TLL = 0 : train from scratch (all layers)
-                    TLL = 1 : use transfer learning and train only the 
-                    classification and regression heads
-                    TLL > 1 : use fine-tuning and train the heads as well as
-                    some more layers. MINIMUM = 2, MAXIMUM = 5
+        tll (int): Transfer Learning Level. For more information, see :ref:`here <tll>`
         limit_validation (Union[bool, float], optional): if validation dataset must be limited. 
                                                         Accepts a percentage or a fllag, in which case 
-                                                        validation is limited to 25%. Defaults to ``False``.
+                                                        validation is limited to 25%. Defaults to ``False``
         weights (Union[os.PathLike, str, Any,  None], optional): weights to initialize the model with. 
-                                                                Defaults to ``None``.
+                                                                Defaults to ``None``
     """
     configuration = configure(name, config)
     
@@ -174,8 +188,7 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
 
 
 def train_hybrid(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str, 
-                config: Union[Path, str], resortit_zw : int, num_classes : int,
-                selected_model : base.AVAILABLE_MODELS, 
+                num_classes : int, selected_model : base.AVAILABLE_MODELS, 
                 selected_classifier : base.AVAILABLE_CLASSIFIERS,
                 weights: Union[os.PathLike, str, Any,  None] = None) -> HybridDLModel:
     """Trains a selected hybrid model
@@ -184,19 +197,20 @@ def train_hybrid(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: s
         train_dataset (pd.DataFrame): dataset used for training
         val_dataset (pd.DataFrame): dataset used for validation
         name (str): name of the task
-        config (Union[Path, str]): path to the configuration JSON file
-        selected_model (base.AVAILABLE_MODELS): model to train
+        selected_model (AVAILABLE_MODELS): model to use as feature extractor
+        selected_classifier (AVAILABLE_CLASSIFIER): classifier to use as classification head
         num_classes (int): number of classes in the dataset
-        weights (Union[os.PathLike, str, Any,  None], optional): weights to initialize the model with. 
-                                                                Defaults to ``None``.
+        weights (Union[PathLike, str, Any,  None], optional): weights to initialize the model with. 
+                                                                Defaults to ``None``
+
+    Returns:
+        HybridDLModel : model composed of feature extractor and traditional ML classifier
     """
     assert weights is not None
-
-    configuration = configure(name, config)
-    configuration['epochs'] = 1
     if weights:
         if type(weights) is os.PathLike or type(weights) is str:
             weights = torch.load(weights)
+    
     model = models.get_hybrid_model(num_classes=num_classes, chosen_model=selected_model,
             chosen_classifier=selected_classifier, weights=weights)
     assert model is not None
@@ -233,7 +247,7 @@ def load_weights_from_checkpoint(checkpoint_path : Union[str, Path],
 
     Args:
         checkpoint_path (Union[str, Path]): path to the checkpoint holding the weights or the weights directly
-        selected_model (base.AVAILABLE_MODELS): model in which to load the weights
+        selected_model (AVAILABLE_MODELS): model in which to load the weights
         num_classes (int): number of classes of the model
 
     Returns:

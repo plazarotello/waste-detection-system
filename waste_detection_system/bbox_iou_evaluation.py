@@ -1,9 +1,30 @@
+# -*- coding: utf-8 -*-
+
+"""
+.. _anurirc: https://github.com/AruniRC
+.. _gist: https://gist.githubusercontent.com/AruniRC/c629c2df0e68e23aff7dcaeef87c72d4/raw/22c6f41fba4fec31d77bfa36d38bb1f7aeabdde6/bbox_iou_evaluation.py
+
+.. note::
+    The bounding boxes matching based on IoU comes from `this gist <gist_>`_. 
+    This utility is used in the :ref:`Hybrid Deep Learning model <feature_extractor>`.
+
+    Original author: `AnuriRC <anurirc_>`_
+"""
 
 from __future__ import division
 import scipy.optimize
 import numpy as np
 
 def bbox_iou(boxA, boxB):
+  """Calculates the Intersection over Union (IoU) metric of the given boxes
+
+  Args:
+      boxA (Tuple[int, int, int, int]): xyxy VOC formatted box
+      boxB (Tuple[int, int, int, int]): xyxy VOC formatted box
+
+  Returns:
+      float: IoU metric
+  """
   # https://www.pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection/
   # ^^ corrected.
     
@@ -35,7 +56,7 @@ def match_bboxes(bbox_gt, bbox_pred, IOU_THRESH=0.5):
 
     Parameters
     ----------
-    bbox_gt, bbox_pred : N1x4 and N2x4 np array of bboxes [x1,y1,x2,y2]. 
+    bbox_gt, bbox_pred : N1x4 and N2x4 np array of VOC bboxes [x1,y1,x2,y2]. 
       The number of bboxes, N1 and N2, need not be the same.
     
     Returns

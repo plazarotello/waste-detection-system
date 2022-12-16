@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-"""Waste Detection System: Utilities
-
-Collection of general utility functions
 """
+Collection of utility functions regarding bounding boxes' format 
+conversion, dataset wrangling functions and image resizing.
+"""
+
 from typing import List, Tuple, Union, Any
 from pathlib import Path
 from enum import Enum
@@ -19,43 +20,34 @@ from torchvision.utils import draw_bounding_boxes
 import matplotlib.pyplot as plt
 from PIL import Image
 import cv2
+import pybboxes as pbx
 
 
 from waste_detection_system import shared_data as base
 
 
-def yolo2pascal(x : int, y : int, w : int, h : int, 
+def yolo2pascal(x : float, y : float, w : float, h : float, 
     img_w : int, img_h : int) -> Tuple[int, int, int, int]:
     """Converts the bounding box from YOLO format to Pascal format
 
     Args:
-        x (int): x
-        y (int): y
-        w (int): width
-        h (int): height
+        x (float): x
+        y (float): y
+        w (float): width
+        h (float): height
         img_w (int): image width
         img_h (int): image height
 
     Returns:
         Tuple[int, int, int, int]: xyxy bounding box
     """
-    x1, y1 = int((x-w/2)*img_w), int((y-h/2)*img_h)
-    x2, y2 = int((x+w/2)*img_w), int((y+h/2)*img_h)
-
-    if x1 < 0:
-        x1 = 0
-    if x2 > img_w-1:
-        x2 = img_w-1
-    if y1 < 0:
-        y1 = 0
-    if y2 > img_h-1:
-        y2 = img_h-1
-
-    return x1, y1, x2, y2
-
+    return pbx.convert_bbox(bbox=(x,y,w,h), 
+                            from_type='yolo', 
+                            to_type='voc', 
+                            image_size=(img_w, img_h)) # type: ignore
 
 def pascal2yolo(x1 : int, y1 : int, x2 : int, y2 : int, 
-    img_w : int, img_h : int) -> Tuple[int, int, int, int]:
+    img_w : int, img_h : int) -> Tuple[float, float, float, float]:
     """Converts from Pascal to YOLO format
 
     Args:
@@ -67,12 +59,12 @@ def pascal2yolo(x1 : int, y1 : int, x2 : int, y2 : int,
         img_h (int): image height
 
     Returns:
-        Tuple[int, int, int, int]: xywh bounding box
+        Tuple[float, float, float, float]: xywh bounding box
     """
-    x, y = int((x2+x1)/(2*img_w)), int((y2+y1)/(2*img_h))
-    w, h = int((x2-x1)/img_w), int((y2-y1)/img_h)
-
-    return x, y, w, h
+    return pbx.convert_bbox(bbox=(x1,y1,x2,y2), 
+                            from_type='voc', 
+                            to_type='yolo', 
+                            image_size=(img_w, img_h)) # type: ignore
 
 
 def coco2pascal(x : int, y : int, w : int, 
@@ -88,8 +80,9 @@ def coco2pascal(x : int, y : int, w : int,
     Returns:
         Tuple[int, int, int, int]: xyxy bounding box
     """
-    return x, y, x+w, y+h
-
+    return pbx.convert_bbox(bbox=(x,y,w,h), 
+                            from_type='coco', 
+                            to_type='voc') # type: ignore
 
 def pascal2coco(x1 : int, y1 : int, x2 : int, 
     y2 : int) -> Tuple[int, int, int, int]:
@@ -104,30 +97,34 @@ def pascal2coco(x1 : int, y1 : int, x2 : int,
     Returns:
         Tuple[int, int, int, int]: xywh bounding box
     """
-    return x1, y1, x2-x1, y2-y1
+    return pbx.convert_bbox(bbox=(x1,y1,x2,y2), 
+                            from_type='voc', 
+                            to_type='coco') # type: ignore
 
 
-def yolo2coco(x : int, y : int, w : int, h : int, 
+def yolo2coco(x : float, y : float, w : float, h : float, 
     img_w : int, img_h : int) -> Tuple[int, int, int, int]:
     """Converts from YOLO to COCO format
 
     Args:
-        x (int): x
-        y (int): y
-        w (int): width of the bounding box
-        h (int): height of the bounding box
+        x (float): x
+        y (float): y
+        w (float): width of the bounding box
+        h (float): height of the bounding box
         img_w (int): image width
         img_h (int): image height
 
     Returns:
         Tuple[int, int, int, int]: xywh bounding box
     """
-    x1, x2, y1, y2 = yolo2pascal(x, y, w, h, img_w, img_h)
-    return pascal2coco(x1, x2, y1, y2)
+    return pbx.convert_bbox(bbox=(x,y,w,h), 
+                            from_type='yolo', 
+                            to_type='coco', 
+                            image_size=(img_w, img_h)) # type: ignore
 
 
 def coco2yolo(x : int, y : int, w : int, h : int, 
-    img_w : int, img_h : int) -> Tuple[int, int, int, int]:
+    img_w : int, img_h : int) -> Tuple[float, float, float, float]:
     """Converts from COCO to YOLO format
 
     Args:
@@ -139,11 +136,12 @@ def coco2yolo(x : int, y : int, w : int, h : int,
         img_h (int): image height
 
     Returns:
-        Tuple[int, int, int, int]: xywh bounding box
+        Tuple[float, float, float, float]: xywh bounding box
     """
-    x1, y1, x2, y2 = coco2pascal(x, y, w, h)
-    return pascal2yolo(x1, y1, x2, y2, img_w, img_h)
-
+    return pbx.convert_bbox(bbox=(x,y,w,h), 
+                            from_type='coco', 
+                            to_type='yolo', 
+                            image_size=(img_w, img_h)) # type: ignore
 
 
 def show(imgs : Union[List[torch.Tensor], torch.Tensor], figsize : Tuple[int, int]=(5,5), title : str='') -> None:

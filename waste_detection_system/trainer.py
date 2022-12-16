@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""Waste Detection System: Trainer
-
-Module holding the hyperparameter tuning and training scripts.
-Includes auxiliary functions to log to neptune.ai
-"""
-
 import shutil
 from lightning import Trainer
 from lightning.lite.utilities.seed import seed_everything
@@ -43,6 +37,8 @@ def split_dataset(dataset : DataFrame) -> Tuple[DataFrame, DataFrame]:
 
     Returns:
         Tuple[DataFrame, DataFrame]: train dataset and validation dataset, in that order
+        
+    :meta private:
     """
     paths = dataset.path.unique()
     train_paths, val_paths = train_test_split(paths, test_size=0.15)
@@ -304,6 +300,8 @@ def log_packages_neptune(neptune_logger : NeptuneLogger):
 
     Args:
         neptune_logger (NeptuneLogger): neptune.ai logger
+        
+    :meta private:
     """
     dists = importlib_metadata.distributions()
     packages = {
@@ -323,5 +321,7 @@ def save_best_model(checkpoint_path: pathlib.Path, save_directory: pathlib.Path)
     Args:
         checkpoint_path (pathlib.Path): best model path
         save_directory (pathlib.Path): save directory
+        
+    :meta private:
     """
     shutil.copy2(src=checkpoint_path, dst=save_directory)

@@ -16,6 +16,7 @@ pip install importlib_metadata
 pip install neptune-client neptune-contrib
 pip install jupyter_contrib_nbextensions
 pip install sphinx sphinx_rtd_theme
+pip install pybboxes
 jupyter contrib nbextension install
 
 Write-Output "Enviro recreado. Instalando ipykernel..."

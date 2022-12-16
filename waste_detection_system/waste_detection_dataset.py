@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 
-"""Waste Detection System: Dataset
+"""
+.. _tutorial: https://github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial
+.. _tutorial2: https://johschmidt42.medium.com/train-your-own-object-detector-with-faster-rcnn-pytorch-8d3c759cfc70
+.. _author: https://github.com/johschmidt42
 
-Class representing the dataset used in the Waste Detection System
-Created following the tutorial on https://johschmidt42.medium.com/train-your-own-object-detector-with-faster-rcnn-pytorch-8d3c759cfc70
+Class representing the dataset used in the Waste Detection System, created following 
+`this tutorial <tutorial_>`_ (available on `medium <tutorial2_>`_).
+
+Original author: `Johannes Schmidt <author_>`_
 """
 
 from typing import List, Dict
@@ -68,7 +73,7 @@ class WasteDetectionDataset(Dataset):
         Returns:
             Dict: item on the given index
         """
-        input_path = self.inputs[index]
+        input_path = Path(self.inputs[index])
         targets = self.targets[input_path]
 
         x = transforms.ToTensor()(Image.open(input_path).convert('RGB'))

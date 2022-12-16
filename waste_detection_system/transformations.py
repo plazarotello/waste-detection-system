@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 
-"""Waste Detection System: Transformations
+"""
+.. _tutorial: https://github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial
+.. _tutorial2: https://johschmidt42.medium.com/train-your-own-object-detector-with-faster-rcnn-pytorch-8d3c759cfc70
+.. _author: https://github.com/johschmidt42
 
-Taken from https://github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial
-Following the tutorial on https://johschmidt42.medium.com/train-your-own-object-detector-with-faster-rcnn-pytorch-8d3c759cfc70
+.. note::
+    This transformations come from `this tutorial <tutorial_>`_ (available on `medium <tutorial2_>`_). 
+
+    Original author: `Johannes Schmidt <author_>`_
 """
 
 from functools import partial

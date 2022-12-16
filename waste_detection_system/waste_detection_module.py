@@ -1,8 +1,17 @@
 # -*- coding: utf-8 -*-
 
-"""Waste Detection System: lightning module
+"""
+.. _tutorial: https://github.com/johschmidt42/PyTorch-Object-Detection-Faster-RCNN-Tutorial
+.. _tutorial2: https://johschmidt42.medium.com/train-your-own-object-detector-with-faster-rcnn-pytorch-8d3c759cfc70
+.. _author: https://github.com/johschmidt42
 
-The ``LightningModule`` which holds the logic of the training loop, etc.
+Class representing the training, validation and testing logic used in the Waste 
+Detection System, based on `this tutorial <tutorial_>`_ (available on `medium <tutorial2_>`_).
+
+Original author: `Johannes Schmidt <author_>`_
+
+Further expanded to include Non-Maximum Suppresion, support for different metrics, 
+optimizers' configuration and modified validation and test phases.
 """
 
 from typing import Any, Dict, List, Tuple, Union
@@ -14,7 +23,6 @@ from torch.utils.data import DataLoader
 from torchvision.models.detection import  FasterRCNN, FCOS, RetinaNet
 from torchvision.models.detection.ssd import SSD
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
-from torchvision.ops import nms
 
 from waste_detection_system import shared_data as base
 from waste_detection_system.waste_detection_dataset import WasteDetectionDataset

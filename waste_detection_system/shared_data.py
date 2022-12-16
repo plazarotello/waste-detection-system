@@ -5,26 +5,29 @@ This script holds different constants and enumerators needed in the
 rest of the scripts in the module. It defines the directories's structure 
 as such:
 
-    - candidate-dataset: temporary folder to hold a dataset while EDA
-    - complementary-dataset: ResortIT dataset ready for training
-    - config
-        - models: configurations for the models
-        - config.json: general configuration
-    - dataset: ZeroWaste dataset ready for training
-    - raw-datasets
-        - cig_butts
-        - CompostNet
-        - drinking-waste
-        - ResortIt
-        - TACO
-        - Trashbox-metal
-        - WasteClassification
-        - zero-waste
-            - zerowaste-f
-    - results: holds the results
-        - final_dataset.csv
-    - waste_detection_system: the source code
-    - neptune.secret: plain text file with the API key
+::
+
+    root
+    ├── candidate-dataset: temporary folder to hold a dataset while EDA
+    ├── complementary-dataset: ResortIT dataset ready for training
+    ├── config
+    │   ├── models: configurations for the models
+    │   └── config.json: general configuration
+    ├── dataset: ZeroWaste dataset ready for training
+    ├── raw-datasets
+    │   ├── cig_butts
+    │   ├── CompostNet
+    │   ├── drinking-waste
+    │   ├── ResortIt
+    │   ├── TACO
+    │   ├── Trashbox-metal
+    │   ├── WasteClassification
+    │   ├── zero-waste
+    │       └── zerowaste-f
+    ├── results: holds the results
+    │   └── final_dataset.csv
+    ├── *waste_detection_system*: the source code
+    └── neptune.secret: plain text file with the API key
 
 """
 
