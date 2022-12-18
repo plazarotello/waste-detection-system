@@ -117,9 +117,8 @@ class WasteDetectionModule(pl.LightningModule):
 
 
     def on_validation_start(self) -> None:
-        super().on_validation_start()
-
         self.map_metric = MeanAveragePrecision()
+        super().on_validation_start()
 
     def validation_step(self, batch, batch_idx):
         # Batch
@@ -133,19 +132,20 @@ class WasteDetectionModule(pl.LightningModule):
 
         return nms_predictions
 
-    def validation_epoch_end(self, outs):
+    def on_validation_epoch_end(self, outs):
         computed_map = self.map_metric.compute()
 
         self.log("Validation_mAP", computed_map['map'])
         self.log("Validation_metrics", computed_map)
 
+        return super().on_validation_epoch_end()
+
 
 
 
     def on_test_start(self) -> None:
-        super().on_test_start()
-
         self.map_metric = MeanAveragePrecision()
+        super().on_test_start()
 
     def test_step(self, batch, batch_idx):
         # Batch
@@ -159,7 +159,7 @@ class WasteDetectionModule(pl.LightningModule):
 
         return preds
 
-    def test_epoch_end(self, outs):
+    def on_test_epoch_end(self, outs):
         computed_map = self.map_metric.compute()
 
         self.log("Test_mAP", computed_map['map'])
