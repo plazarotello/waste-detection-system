@@ -157,7 +157,7 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
         name (str): name of the task
         config (Union[Path, str]): path to the configuration JSON file
         resortit_zw (int): ``0`` if ResortIT dataset, ``1`` if ZeroWaste
-                            Used for neptune.ai logger
+                            Used for the logger's project name
         metric (str): metric to optimize
         selected_model (AVAILABLE_MODELS): model to train
         num_classes (int): number of classes in the dataset
@@ -185,9 +185,16 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
 
     tracker.start()
     try:
-        trainer.train(model=model, train_dataset=train_dataset, val_dataset=val_dataset, 
-            config=configuration, limit_validation=limit_validation,
-            neptune_project=base.NEPTUNE_PROJECTS[selected_model][resortit_zw], metric=metric)
+        trainer.train(
+            model=model, 
+            train_dataset=train_dataset, 
+            val_dataset=val_dataset, 
+            config=configuration, 
+            limit_validation=limit_validation, 
+            name=base.get_experiment_name(tll),
+            project=base.get_project_name(selected_model, resortit_zw), 
+            metric=metric
+        )
     except Exception:
         pass
     tracker.stop()
@@ -263,7 +270,7 @@ def load_weights_from_checkpoint(checkpoint_path : Union[str, Path],
         Dict[str, Any]: weights of the model
     """
     try:
-        module = WasteDetectionModule.load_from_checkpoint(checkpoint_path=checkpoint_path)
+        module = WasteDetectionModule.load_from_checkpoint(checkpoint_path=checkpoint_path, strict=False)
     except Exception:
         fake_df = pd.DataFrame({})
         module = WasteDetectionModule(
@@ -277,30 +284,25 @@ def load_weights_from_checkpoint(checkpoint_path : Union[str, Path],
 
 
 
-def test(weights : Any, selected_model: models.AVAILABLE_MODELS, 
-        num_classes : int, test_dataset : pd.DataFrame) -> Any:
+def test(checkpoint_path : Union[str, Path], selected_model : base.AVAILABLE_MODELS, 
+        resortit_zw : int, test_dataset : pd.DataFrame) -> Any:
     """Tests the given dataset against the model in the checkpoint
 
     Args:
         checkpoint_path (Union[str, Path]): path to the checkpoint model
+        selected_model (AVAILABLE_MODELS): model in which to test
+        resortit_zw (int): ``0`` if ResortIT dataset, ``1`` if ZeroWaste
+                            Used for the logger's project name
         test_dataset (pd.DataFrame): dataset to test
 
     Returns:
         Any: mAP for the test dataset
     """
-    assert weights is not None
-    if weights:
-        if type(weights) is os.PathLike or type(weights) is str:
-            weights = torch.load(weights)
-    
-    base_model = models.get_base_model(num_classes, selected_model, 0)
-    assert base_model is not None
-    if weights:
-        base_model = models.load_partial_weights(base_model, weights)
-
-    fake_df = pd.DataFrame({})
-    module = WasteDetectionModule(model=base_model, 
-                                train_dataset=fake_df, val_dataset=None, 
-                                batch_size=1, lr=1, monitor_metric='training_loss')
-    return trainer.test(module=module, dataset=test_dataset)
+    module = WasteDetectionModule.load_from_checkpoint(checkpoint_path=checkpoint_path, strict=False)
+    return trainer.test(
+                        module=module, 
+                        project=base.get_project_name(selected_model, resortit_zw),
+                        name=base.get_experiment_name(-1),
+                        dataset=test_dataset
+                    )
     

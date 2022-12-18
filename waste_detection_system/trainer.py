@@ -3,13 +3,12 @@
 import shutil
 from lightning import Trainer
 from lightning.lite.utilities.seed import seed_everything
-from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.callbacks import (
     # EarlyStopping,
     LearningRateMonitor,
     ModelCheckpoint
 )
-from lightning.pytorch.loggers import NeptuneLogger
+from lightning.pytorch.loggers import TensorBoardLogger
 from torch import Tensor
 from torchvision.models.detection import  FasterRCNN, FCOS, RetinaNet
 from torchvision.models.detection.ssd import SSD
@@ -20,7 +19,6 @@ from typing import Any, Dict, List, Tuple, Union
 from sklearn.model_selection import train_test_split
 
 import importlib_metadata
-from neptune.new.types import File
 import pathlib
 
 from waste_detection_system import shared_data as base
@@ -116,14 +114,9 @@ def train_hybrid(model : HybridDLModel, train_dataset : DataFrame, val_dataset :
         model (Union[FasterRCNN, FCOS, RetinaNet, SSD]): model to train
         train_dataset (DataFrame): training dataset
         val_dataset (DataFrame): validation dataset
-        config (dict): configuration dictionary
-        neptune_project (str): name of the project in which to log
-        metric (str): name of the metric to monitor. Usual values: ``Validation_mAP``, 
-                    ``training_loss``, ``bbox_regression`` and ``classification``
-        limit_validation (Union[bool, float], optional): if validation dataset must be limited (``True`` = 25%). Defaults to ``False``.
 
     Returns:
-        Tuple[Union[Path, str], Trainer]: best model path and the trainer
+        HybridDLModel: traditional ML classifier trained model
     """
     seed_everything(base.SEED)
 
@@ -159,7 +152,7 @@ def train_hybrid(model : HybridDLModel, train_dataset : DataFrame, val_dataset :
 
 
 def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataFrame, 
-        val_dataset : DataFrame, config : dict, neptune_project : str, metric : str, 
+        val_dataset : DataFrame, config : dict, project : str, name : str, metric : str, 
         limit_validation : Union[bool, float] = False) -> Tuple[Union[Path, None], Trainer]:
     """Trains the model with the given configuration.
     The training includes model checkpointing for the last epoch and best model regarding the
@@ -167,16 +160,17 @@ def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataF
     The configuration dictionary must hold the ``epochs`` key (max epochs to train), 
     ``lr`` key (learning rate), ``bs`` (batch size to use).
 
-
     Args:
         model (Union[FasterRCNN, FCOS, RetinaNet, SSD]): model to train
         train_dataset (DataFrame): training dataset
         val_dataset (DataFrame): validation dataset
         config (dict): configuration dictionary
-        neptune_project (str): name of the project in which to log
+        project (str): name of the project in which to log
+        name (str): name of the run/experiment in which to log
         metric (str): name of the metric to monitor. Usual values: ``Validation_mAP``, 
                     ``training_loss``, ``bbox_regression`` and ``classification``
-        limit_validation (Union[bool, float], optional): if validation dataset must be limited (``True`` = 25%). Defaults to ``False``.
+        limit_validation (Union[bool, float], optional): if validation dataset must be 
+                    limited (``True`` = 25%). Defaults to ``False``.
 
     Returns:
         Tuple[Union[Path, str], Trainer]: best model path and the trainer
@@ -191,12 +185,11 @@ def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataF
     if type(limit_validation) is bool:
         if limit_validation: limit_validation = base.LIMIT_VAL_BATCHES
         else: limit_validation = 1.0
+    check_val_every_n_steps = 1 if metric == 'Validation_mAP' else 10
 
-    neptune_logger = NeptuneLogger(
-        api_key=base.NEPTUNE_API_KEY,
-        project=neptune_project,
-        mode='offline'
-    )
+
+    tensorboad_logger = TensorBoardLogger(save_dir=base.TENSORBOARD_DIR / project,
+        name=name)
 
     lit_model = WasteDetectionModule(model=model, train_dataset=train_dataset,
         val_dataset=val_dataset, batch_size=bs, lr=lr, monitor_metric=metric)
@@ -224,14 +217,13 @@ def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataF
             callbacks=[checkpoint_callback, learningrate_callback],
             default_root_dir=Path(output_dir),
             max_epochs=epochs,
-            logger=neptune_logger,
+            logger=tensorboad_logger,
             accelerator='gpu',
             num_sanity_val_steps=0,
             auto_lr_find=False,
             auto_scale_batch_size=False,
             limit_val_batches=limit_validation,
-            check_val_every_n_epoch=10,
-            fast_dev_run=True
+            check_val_every_n_epoch=check_val_every_n_steps
         )
     else:
         trainer = Trainer(
@@ -239,18 +231,16 @@ def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataF
             callbacks=[checkpoint_callback, learningrate_callback],
             default_root_dir=Path(output_dir),
             max_epochs=epochs,
-            logger=neptune_logger,
+            logger=tensorboad_logger,
             num_sanity_val_steps=0,
             auto_lr_find=False,
             auto_scale_batch_size=False,
             limit_val_batches=limit_validation,
-            check_val_every_n_epoch=10
+            check_val_every_n_epoch=check_val_every_n_steps
         )
 
     trainer.fit(model=lit_model)
-    
-    log_packages_neptune(neptune_logger=neptune_logger)
-    neptune_logger.experiment.stop()
+    tensorboad_logger.finalize('finished')
     
     best_k_models = checkpoint_callback.best_k_models
     last_model_path = Path(checkpoint_callback.last_model_path)
@@ -278,11 +268,14 @@ def train(model : Union[FasterRCNN, FCOS, RetinaNet, SSD], train_dataset : DataF
     return best_model_path, trainer
 
 
-def test(module : WasteDetectionModule, dataset : DataFrame) -> Any:
+def test(module : WasteDetectionModule, project : str, name : str,
+        dataset : DataFrame) -> Any:
     """Tests the dataset in the given trainer
 
     Args:
         module (WasteDetectionModule): trainer to test
+        project (str): name of the project in which to log
+        name (str): name of the run/experiment in which to log
         dataset (DataFrame): test dataset
 
     Returns:
@@ -294,7 +287,8 @@ def test(module : WasteDetectionModule, dataset : DataFrame) -> Any:
         shuffle=False
         )
     
-    logger = CSVLogger(str(base.RESULTS), name='test', flush_logs_every_n_steps=1)
+    tensorboad_logger = TensorBoardLogger(save_dir=base.TENSORBOARD_DIR / project,
+        name=name, version='test')
 
     if base.USE_GPU:
         trainer = Trainer(
@@ -302,7 +296,7 @@ def test(module : WasteDetectionModule, dataset : DataFrame) -> Any:
             accelerator='gpu',
             auto_lr_find=False,
             auto_scale_batch_size=False,
-            logger=logger,
+            logger=tensorboad_logger,
             log_every_n_steps=1
         )
     else:
@@ -310,31 +304,12 @@ def test(module : WasteDetectionModule, dataset : DataFrame) -> Any:
             gpus=base.GPU,
             auto_lr_find=False,
             auto_scale_batch_size=False,
-            logger=logger,
+            logger=tensorboad_logger,
             log_every_n_steps=1
         )
-    trainer.test(model=module, dataloaders=dataloader)
-    return trainer.lightning_module.test_results
-
-
-def log_packages_neptune(neptune_logger : NeptuneLogger):
-    """Flushes the logs of the run
-
-    Args:
-        neptune_logger (NeptuneLogger): neptune.ai logger
-        
-    :meta private:
-    """
-    dists = importlib_metadata.distributions()
-    packages = {
-        idx: (dist.metadata["Name"], dist.version) for idx, dist in enumerate(dists)
-    }
-
-    packages_df = DataFrame.from_dict(
-        packages, orient="index", columns=["package", "version"]
-    )
-
-    neptune_logger.experiment['packages'].upload(File.as_html(packages_df))
+    _ = trainer.test(model=module, dataloaders=dataloader)
+    tensorboad_logger.finalize('finished')
+    return True
 
 
 def save_best_model(checkpoint_path: pathlib.Path, save_directory: pathlib.Path):

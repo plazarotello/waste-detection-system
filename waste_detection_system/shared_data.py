@@ -22,12 +22,11 @@ as such:
     │   ├── TACO
     │   ├── Trashbox-metal
     │   ├── WasteClassification
-    │   ├── zero-waste
+    │   └── zero-waste
     │       └── zerowaste-f
     ├── results: holds the results
     │   └── final_dataset.csv
-    ├── *waste_detection_system*: the source code
-    └── neptune.secret: plain text file with the API key
+    └── *waste_detection_system*: the source code
 
 """
 
@@ -61,25 +60,28 @@ AVAILABLE_CLASSIFIERS = Enum('Classifiers', 'SVM KNN')
 
 ROOT = Path(os.path.dirname(__file__)).parent
 
-
 RESULTS = ROOT / Path('results')
 
+TENSORBOARD_DIR = ROOT /Path('tensorboard_logs')
 
 
-with open(ROOT/'neptune.secret', 'r', encoding='utf-8-sig') as f:
-    NEPTUNE_API_KEY = f.read()
+def get_project_name(model : AVAILABLE_MODELS, resortit_zw : int) -> str:
+    model_to_project = {
+        AVAILABLE_MODELS.FASTERRCNN : 'faster-r-cnn',
+        AVAILABLE_MODELS.SSD : 'ssd',
+        AVAILABLE_MODELS.FCOS : 'fcos',
+        AVAILABLE_MODELS.RETINANET : 'retinanet'
+    }
+    dataset_to_project = {
+        0 : 'resortit',
+        1 : 'zerowaste'
+    }
 
+    return f'{model_to_project[model]}_{dataset_to_project[resortit_zw]}'
 
-NEPTUNE_PROJECTS = {
-    AVAILABLE_MODELS.FASTERRCNN : ['plazarotello/fasterrcnn-resortit', 
-                                    'plazarotello/fasterrcnn-zerowaste'],
-    AVAILABLE_MODELS.SSD : ['plazarotello/ssd-resortit', 
-                            'plazarotello/ssd-zerowaste'],
-    AVAILABLE_MODELS.RETINANET : ['plazarotello/retinanet-resortit', 
-                                'plazarotello/retinanet-zerowaste'],
-    AVAILABLE_MODELS.FCOS : ['plazarotello/fcos-resortit', 
-                            'plazarotello/fcos-zerowaste'],
-}
+def get_experiment_name(tll : int) -> str:
+    return f'tll_{tll}'
+
 
 
 # -----------------------------------------------------------------------------

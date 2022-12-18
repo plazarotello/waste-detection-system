@@ -15,6 +15,7 @@ pip install lightning
 pip install importlib_metadata
 pip install neptune-client neptune-contrib
 pip install jupyter_contrib_nbextensions
+pip install tensorboard
 jupyter contrib nbextension install
 
 echo "Enviro recreado. Instalando ipykernel..."

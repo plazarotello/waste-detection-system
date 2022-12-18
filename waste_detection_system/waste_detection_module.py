@@ -23,7 +23,6 @@ from torch.utils.data import DataLoader
 from torchvision.models.detection import  FasterRCNN, FCOS, RetinaNet
 from torchvision.models.detection.ssd import SSD
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
-from lightning.pytorch.loggers import CSVLogger
 
 from waste_detection_system import shared_data as base
 from waste_detection_system.waste_detection_dataset import WasteDetectionDataset
@@ -86,9 +85,7 @@ class WasteDetectionModule(pl.LightningModule):
         self.hparams['model'] = self.model
         self.hparams['train_batch_size'] = self.train_batch_size
         self.hparams['val_batch_size'] = self.val_batch_size
-
-        if self.logger is not None and type(self.logger) is not CSVLogger:
-            self.save_hyperparameters()
+        self.save_hyperparameters(ignore=['train_dataset', 'val_dataset'])
     
 
 
@@ -167,9 +164,6 @@ class WasteDetectionModule(pl.LightningModule):
 
         self.log("Test_mAP", computed_map['map'])
         self.log("Test_metrics", computed_map)
-
-        if self.logger is not None:
-            self.logger.log_metrics(computed_map)
 
         return computed_map
 
