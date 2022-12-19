@@ -10,6 +10,7 @@ raw-datasets/**/*.txt
 raw-datasets/**/*.heic
 raw-datasets/**/*.HEIC
 raw-datasets/**/*.json
+tensorboard_logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

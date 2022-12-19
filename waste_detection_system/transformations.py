@@ -83,17 +83,20 @@ def map_class_to_int(labels: List[str], mapping: dict) -> np.ndarray:
 
 def apply_nms(target: dict, iou_threshold) -> dict:
     """Non-maximum Suppression"""
-    boxes = torch.tensor(target["boxes"])
-    labels = torch.tensor(target["labels"])
-    scores = torch.tensor(target["scores"])
+    boxes = torch.stack(target["boxes"]).cuda()
+    labels = torch.tensor(target["labels"]).cuda()
+    scores = torch.tensor(target["scores"]).cuda()
 
     if boxes.size()[0] > 0:
-        mask = nms(boxes, scores, iou_threshold=iou_threshold)
-        mask = (np.array(mask),)
+        mask = nms(boxes, scores, iou_threshold=iou_threshold).tolist()
 
-        target["boxes"] = np.asarray(boxes)[mask]
-        target["labels"] = np.asarray(labels)[mask]
-        target["scores"] = np.asarray(scores)[mask]
+        target["boxes"] = [box for i, box in enumerate(target["boxes"]) if i in mask]
+        target["labels"] = np.asarray(labels.detach().cpu())[mask]
+        target["scores"] = np.asarray(scores.detach().cpu())[mask]
+
+        target["boxes"] = torch.stack(target["boxes"]).cuda()
+        target["labels"] = torch.tensor(target["labels"]).cuda()
+        target["scores"] = torch.tensor(target["scores"]).cuda()
 
     return target
 
@@ -103,9 +106,10 @@ def apply_score_threshold(target: dict, score_threshold) -> dict:
     boxes = target["boxes"]
     labels = target["labels"]
     scores = target["scores"]
+    
 
-    mask = np.where(scores > score_threshold)
-    target["boxes"] = boxes[mask]
+    mask = np.array(np.where(scores > score_threshold)[0])
+    target["boxes"] = [box for i, box in enumerate(boxes) if i in mask]
     target["labels"] = labels[mask]
     target["scores"] = scores[mask]
 

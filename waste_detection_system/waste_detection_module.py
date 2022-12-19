@@ -14,7 +14,7 @@ Further expanded to include Non-Maximum Suppresion, support for different metric
 optimizers' configuration and modified validation and test phases.
 """
 
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Tuple, Union
 from statistics import mean
 from pandas import DataFrame
 import lightning as pl
@@ -26,7 +26,6 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
 from waste_detection_system import shared_data as base
 from waste_detection_system.waste_detection_dataset import WasteDetectionDataset
-from waste_detection_system.transformations import apply_nms, apply_score_threshold
 
 
 class WasteDetectionModule(pl.LightningModule):
@@ -43,7 +42,7 @@ class WasteDetectionModule(pl.LightningModule):
             model (Union[FasterRCNN, FCOS, RetinaNet, SSD]): model to use
             train_dataset (DataFrame): dataset used for training
             val_dataset (Union[DataFrame, None]): dataset used for validation. Can be ``None``.
-            batch_size (int): batch size
+            batch_size (int): batch size (split in 75/25 for training-validating)
             lr (float): initial learning rate
             monitor_metric (str): metric to use in optimizers
             iou_threshold (float, optional): IoU threshold. Defaults to 0.5.
@@ -60,12 +59,8 @@ class WasteDetectionModule(pl.LightningModule):
         self.val_dataset = val_dataset
 
         # Configuration dictionary
-        if self.val_dataset is not None:
-            self.train_batch_size = int(batch_size/2)
-            self.val_batch_size = int(batch_size/2)
-        else:
-            self.train_batch_size = batch_size
-            self.val_batch_size = 1
+        self.train_batch_size = int(0.75*batch_size) if val_dataset is not None else batch_size
+        self.val_batch_size = int(0.25*batch_size) if val_dataset is not None else 0
         
         self.batch_size = batch_size
         self.lr = lr
@@ -126,17 +121,17 @@ class WasteDetectionModule(pl.LightningModule):
 
         # Inference
         preds = self.model(x)
-        nms_predictions = self.apply_thresholds(preds)
+        self.map_metric.update(preds=preds, target=y)
 
-        self.map_metric.update(preds=nms_predictions, target=y)
+        return preds
 
-        return nms_predictions
-
-    def on_validation_epoch_end(self, outs):
+    def on_validation_epoch_end(self):
         computed_map = self.map_metric.compute()
 
         self.log("Validation_mAP", computed_map['map'])
         self.log("Validation_metrics", computed_map)
+
+        self.log_dict(computed_map)
 
         return super().on_validation_epoch_end()
 
@@ -153,13 +148,12 @@ class WasteDetectionModule(pl.LightningModule):
 
         # Inference
         preds = self.model(x)
-        nms_predictions = self.apply_thresholds(preds)
 
-        self.map_metric.update(preds=nms_predictions, target=y)
+        self.map_metric.update(preds=preds, target=y)
 
         return preds
 
-    def on_test_epoch_end(self, outs):
+    def on_test_epoch_end(self):
         computed_map = self.map_metric.compute()
 
         self.log("Test_mAP", computed_map['map'])
@@ -167,29 +161,6 @@ class WasteDetectionModule(pl.LightningModule):
 
         return computed_map
 
-
-    def apply_thresholds(self, predictions: List[Dict]):
-        """Apply score threshold and IoU threshold to the predictions to filter the irrelevant ones
-
-        Args:
-            predictions (List[Dict]): predictions
-
-        Returns:
-            List[Dict]: predictions filtered out from NMS and score threshold 
-        """
-        nms_predictions = []
-        for pred in predictions:
-            cpu_prediction= {
-                'boxes': [box.detach().cpu() for box in pred['boxes']],
-                'scores': [score.detach().cpu() for score in pred['scores']],
-                'labels': [label.detach().cpu() for label in pred['labels']],
-            }
-            nms_predictions.append(apply_nms(target=
-                    apply_score_threshold(target=cpu_prediction, 
-                        score_threshold=self.score_threshold), 
-                iou_threshold=self.iou_threshold))
-        
-        return nms_predictions
 
 
     def configure_optimizers(self):
@@ -241,7 +212,8 @@ def collate_double(batch : Dict) -> Tuple[Any, Any, Any]:
 
 
 
-def get_dataloader(data : DataFrame, batch_size : int, shuffle : bool = True) -> DataLoader[WasteDetectionDataset]:
+def get_dataloader(data : DataFrame, batch_size : int, shuffle : bool = True
+    ) -> DataLoader[WasteDetectionDataset]:
     """Creates a dataloader
 
     Args:
@@ -254,7 +226,5 @@ def get_dataloader(data : DataFrame, batch_size : int, shuffle : bool = True) ->
     """
     mapping = { base.CATS_PAPEL : 1, base.CATS_PLASTICO : 2}
     dataset = WasteDetectionDataset(data=data, mapping=mapping)
-    dataloader = DataLoader(dataset=dataset, batch_size=batch_size, pin_memory=True,
+    return DataLoader(dataset=dataset, batch_size=batch_size, pin_memory=True,
         shuffle=shuffle, num_workers=0, collate_fn=collate_double)  # type: ignore
-    
-    return dataloader

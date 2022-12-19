@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
 from sklearn.model_selection import train_test_split
 
-import importlib_metadata
 import pathlib
 
 from waste_detection_system import shared_data as base
@@ -287,6 +286,7 @@ def test(module : WasteDetectionModule, project : str, name : str,
         shuffle=False
         )
     
+    
     tensorboad_logger = TensorBoardLogger(save_dir=base.TENSORBOARD_DIR / project,
         name=name, version='test')
 
@@ -307,9 +307,9 @@ def test(module : WasteDetectionModule, project : str, name : str,
             logger=tensorboad_logger,
             log_every_n_steps=1
         )
-    _ = trainer.test(model=module, dataloaders=dataloader)
+    results = trainer.test(model=module, dataloaders=dataloader)
     tensorboad_logger.finalize('finished')
-    return True
+    return results
 
 
 def save_best_model(checkpoint_path: pathlib.Path, save_directory: pathlib.Path):

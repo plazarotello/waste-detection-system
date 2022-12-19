@@ -30,6 +30,7 @@ Loading/saving weights
 from pathlib import Path
 import json
 import os
+import traceback
 from typing import Any, Union, Dict
 from codecarbon import EmissionsTracker
 import pandas as pd
@@ -137,8 +138,9 @@ def hyperparameter_search(name: str, dataset : pd.DataFrame, config: Union[Path,
     try:
         trainer.tune(model=model, train_dataset=dataset, monitor_metric = metric, find_lr=find_lr, 
                     find_batch_size=find_batch_size)
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
     tracker.stop()
 
 
@@ -184,6 +186,7 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
         log_level='error', tracking_mode='process', measure_power_secs=30)  # type: ignore
 
     tracker.start()
+
     try:
         trainer.train(
             model=model, 
@@ -195,8 +198,10 @@ def train(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: str,
             project=base.get_project_name(selected_model, resortit_zw), 
             metric=metric
         )
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+
     tracker.stop()
 
 
@@ -236,8 +241,9 @@ def train_hybrid(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: s
     tracker.start()
     try:
         model = trainer.train_hybrid(model, train_dataset, val_dataset)
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
     tracker.stop()
     return model
 
@@ -271,7 +277,10 @@ def load_weights_from_checkpoint(checkpoint_path : Union[str, Path],
     """
     try:
         module = WasteDetectionModule.load_from_checkpoint(checkpoint_path=checkpoint_path, strict=False)
-    except Exception:
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+
         fake_df = pd.DataFrame({})
         module = WasteDetectionModule(
             model=models.get_base_model(num_classes, selected_model, 1), 
