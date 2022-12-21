@@ -123,26 +123,17 @@ def train_hybrid(model : HybridDLModel, train_dataset : DataFrame, val_dataset :
         batch_size=1)
     val_loader = waste_detection_module.get_dataloader(val_dataset,
         batch_size=1)
-    
-    train_images : List[Tensor] = []
-    train_targets : List[Dict[str, Tensor]] = []
-    for image, ground_truth, _ in train_loader:
-        train_images.append(image)
-        train_targets.append(ground_truth)
-    
+
     model.train(True)
-    classification_loss = model.forward(images=train_images, 
-        targets=train_targets)['classification_loss'] # type: ignore
+    classification_loss = model.forward(train_loader=train_loader)['classification_loss']    # type: ignore
     print(f'Train classification loss: {classification_loss}')
 
-    val_images : List[Tensor] = []
     val_targets : List[Dict[str, Tensor]] = []
-    for image, ground_truth, _ in val_loader:
-        val_images.append(image)
+    for _, ground_truth, _ in val_loader:
         val_targets.append(ground_truth)
 
     model.eval()
-    val_results : List[Dict[str, Tensor]] = model.forward(images=val_images) # type: ignore
+    val_results : List[Dict[str, Tensor]] = model.forward(val_loader=val_loader)     # type: ignore
     val_loss = model.validate(x=val_results, y=val_targets)['classification_loss']
     print(f'Validation classification loss: {val_loss}')
 

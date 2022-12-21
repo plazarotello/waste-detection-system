@@ -233,9 +233,7 @@ def train_hybrid(train_dataset: pd.DataFrame, val_dataset: pd.DataFrame, name: s
             chosen_classifier=selected_classifier, weights=weights)
     assert model is not None
     
-    gpu_ids = [base.GPU] if torch.cuda.is_available() and base.USE_GPU and base.GPU else None
-    
-    tracker = EmissionsTracker(project_name=name, experiment_id='train', gpu_ids=gpu_ids, 
+    tracker = EmissionsTracker(project_name=name, experiment_id='train', gpu_ids=None, 
         log_level='error', tracking_mode='process', measure_power_secs=30)  # type: ignore
 
     tracker.start()

@@ -56,7 +56,7 @@ some examples of how to use the module:
         resortit_zw=0,                                      # 0 for ResortIT, 1 for ZeroWaste (for naming purposes)
         selected_model=main.models.AVAILABLE_MODELS.SSD,    # type of model
         limit_validation=False,                             # turn on if you want to validate only a subset of samples
-        weights=weights,                                    # the seights we've loaded before (if you are not starting training from zero)
+        weights=weights,                                    # the weights we've loaded before (if you are not starting training from zero)
         metric='training_loss'                              # metric to optimize
     )
 

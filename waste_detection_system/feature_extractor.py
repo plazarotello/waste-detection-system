@@ -11,17 +11,21 @@
     module will be put in ``eval()`` mode.
 """
 
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Union
 from sklearn.metrics import log_loss
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
+from sklearn.utils.validation import check_is_fitted
 from torch import Tensor, nn
+from torch.utils.data import DataLoader
+import numpy as np
 import torch
 
 from waste_detection_system.shared_data import AVAILABLE_CLASSIFIERS
 from waste_detection_system.bbox_iou_evaluation import match_bboxes
+from waste_detection_system.waste_detection_dataset import WasteDetectionDataset
 
 class FeatureExtractor(nn.Module):
     """
@@ -101,21 +105,23 @@ class HybridDLModel(nn.Module):
 
         self.feature_extractor = feature_extractor
         if classifier_type == AVAILABLE_CLASSIFIERS.SVM:
-            classifier_module = LinearSVC()
+            self.classifier = Pipeline([('scaler', StandardScaler()), ('svc', LinearSVC())])
         elif classifier_type == AVAILABLE_CLASSIFIERS.KNN:
-            classifier_module = KNeighborsClassifier()
+            self.classifier = Pipeline([('scaler', StandardScaler()), ('knnc', KNeighborsClassifier())])
         else: raise ValueError('Classifier type not supported')
 
-        assert classifier_module is not None
+        assert self.classifier is not None
 
-        self.classifier = Pipeline([StandardScaler(), classifier_module])
     
-    def forward(self, images : List[Tensor], targets : Optional[List[Dict[str, Tensor]]] = None
+    def forward(self, train_loader : Union[DataLoader[WasteDetectionDataset], None] = None,
+                val_loader : Union[DataLoader[WasteDetectionDataset], None] = None
         ) -> Union[List[Dict[str, Tensor]], Dict[str, Tensor]]:
         """
         Args:
-            images (list[Tensor]): images to be processed
-            targets (list[Dict[str, Tensor]]): ground-truth boxes present in the image (optional)
+            train_loader (Union[DataLoader[WasteDetectionDataset], None]): dataloader for
+                training. It won't be used if the model is not in training mode. Defaults to ``None``
+            val_loader (Union[DataLoader[WasteDetectionDataset], None]): dataloader for
+                validating. It won't be used if the model is in training mode. Defaultos to ``None``
 
         Returns:
             result (List[Dict[str, Tensor]]): the output from the model.
@@ -124,22 +130,26 @@ class HybridDLModel(nn.Module):
                 ``boxes``, ``labels``, ``scores``.
 
         Raises: 
-            Exception: if the model is training but doesn't have targets
+            Exception: if the model is training but train_loader is None or the model is not training
+                        but val_loader is None.
+                        The function will also raise an exception if the feature extractor can't make
+                        any valid predictions.
+            NotFittedError: if the model is in eval() mode but hasn't been fitted beforehand.
 
         """
-        if self.training:
-            assert targets is not None
+        if self.training and train_loader is not None:
             self.feature_extractor.eval()
 
             features = []
-            for image, target in zip(images, targets):
+            print('Extracting features...', end='')
+            for image, target, _ in train_loader:
                 feature_extraction = self.feature_extractor(image)
                 
-                pred_boxes = feature_extraction['bounding_boxes'].detach().cpu().numpy()
-                feature_map = feature_extraction['features'].detach().cpu().numpy()
+                pred_boxes = np.asarray(feature_extraction['bounding_boxes']).squeeze()
+                feature_map = feature_extraction['features'][0][0].detach().cpu().numpy().squeeze()
 
-                target_boxes = target['boxes'].detach().cpu().numpy()
-                target_labels = target['labels'].detach().cpu().numpy()
+                target_boxes = np.asarray([t['boxes'].detach().cpu().numpy() for t in target]).squeeze()
+                target_labels = np.asarray([t['labels'].detach().cpu().numpy() for t in target]).squeeze()
 
                 feature = {
                     'ground_truth_boxes' : [],
@@ -148,7 +158,13 @@ class HybridDLModel(nn.Module):
                     'feature_map' : []
                 }
 
-                for gt, pred, _, valid in match_bboxes(target_boxes, pred_boxes):
+                if pred_boxes.ndim != 2 or target_boxes.ndim != 2:
+                    continue
+
+                for result in match_bboxes(target_boxes, pred_boxes):
+                    if len(result) == 4:
+                        gt, pred, _, valid = result
+                    else: continue
                     if valid < 1:
                         continue
                     
@@ -159,23 +175,38 @@ class HybridDLModel(nn.Module):
                 
                 features.append(feature)
             
-            X = [feature['feature_map'] for feature in features]
-            y = [feature['ground_truth_labels'] for feature in features]
+            print(' Done!')
+            if not features:
+                print('Couldn\'t find any predictions.')
+                raise Exception('Cant\'t find any predictions')
+
+            X = [feature['feature_map'] for feature in features if feature['feature_map']]
+            y = [feature['ground_truth_labels'] for feature in features if feature['ground_truth_labels']]
+            if not X or not y:
+                print('Couldn\'t find any predictions.')
+                raise Exception('Cant\'t find any predictions')
+            
+            print('Classifying...', end='')
             self.classifier = self.classifier.fit(X, y)
             y_hat_prob = self.classifier.predict_proba(X)
+            print(' Done')
 
             return {'classification_loss' : torch.tensor(log_loss(y_true=y, y_pred=y_hat_prob))}
         
-        else:
+        elif not self.training and val_loader is not None:
             self.feature_extractor.eval()
 
             results = []
-            for image in images:
+            for image, _, _ in val_loader:
                 feature_extraction = self.feature_extractor(image)
                 
-                pred_boxes = feature_extraction['bounding_boxes']
-                feature_map = feature_extraction['features'].detach().cpu().numpy()
+                pred_boxes = np.asarray(feature_extraction['bounding_boxes']).squeeze()
+                feature_map = feature_extraction['features'][0][0].detach().cpu().numpy().squeeze()
 
+                if pred_boxes.ndim != 2:
+                    continue
+                check_is_fitted(self.classifier)
+                
                 y_hat_prob = self.classifier.predict_proba(feature_map)
                 y_hat = self.classifier.predict(feature_map)
 
@@ -186,6 +217,10 @@ class HybridDLModel(nn.Module):
                 })
 
             return results
+        
+        raise Exception(f'Incorrect forward call, training={self.training}, '
+                        f'train_loader={train_loader is not None} and '
+                        f'val_loader={val_loader is not None}')
     
 
     def validate(self, x : List[Dict[str, Tensor]], y : List[Dict[str, Tensor]]) -> Dict[str, Tensor]:
