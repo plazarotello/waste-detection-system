@@ -305,7 +305,12 @@ def test(checkpoint_path : Union[str, Path], selected_model : base.AVAILABLE_MOD
     Returns:
         Any: mAP for the test dataset
     """
-    module = WasteDetectionModule.load_from_checkpoint(checkpoint_path=checkpoint_path, strict=False)
+    module = WasteDetectionModule.load_from_checkpoint(
+        checkpoint_path=checkpoint_path, 
+        strict=False,
+        train_dataset=pd.DataFrame({}),
+        val_dataset=None
+        )
     return trainer.test(
                         module=module, 
                         project=base.get_project_name(selected_model, resortit_zw),
