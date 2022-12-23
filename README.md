@@ -6,8 +6,10 @@ Documentation live at [https://plazarotello.github.io/waste-detection-system-doc
 ## Installation
 
 \* Requires `conda` installed and accesible throguh CLI
+
 \** Has not been tested in UNIX environments
 
+### Steps
 - Download the repository
 - Open a powershell/bash CLI in the root
 - Execute the dependencies' installation script:
