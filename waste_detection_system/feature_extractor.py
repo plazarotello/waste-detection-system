@@ -22,6 +22,7 @@ from torch import Tensor, nn
 from torch.utils.data import DataLoader
 import numpy as np
 import torch
+from tqdm import tqdm
 
 from waste_detection_system.shared_data import AVAILABLE_CLASSIFIERS
 from waste_detection_system.bbox_iou_evaluation import match_bboxes
@@ -142,7 +143,7 @@ class HybridDLModel(nn.Module):
 
             features = []
             print('Extracting features...', end='')
-            for image, target, _ in train_loader:
+            for (image, target, _) in tqdm(train_loader):
                 feature_extraction = self.feature_extractor(image)
                 
                 pred_boxes = np.asarray(feature_extraction['bounding_boxes']).squeeze()
@@ -161,7 +162,7 @@ class HybridDLModel(nn.Module):
                 if pred_boxes.ndim != 2 or target_boxes.ndim != 2:
                     continue
 
-                for result in match_bboxes(target_boxes, pred_boxes):
+                for result in match_bboxes(target_boxes, pred_boxes, IOU_THRESH=0.1):
                     if len(result) == 4:
                         gt, pred, _, valid = result
                     else: continue
@@ -197,7 +198,7 @@ class HybridDLModel(nn.Module):
             self.feature_extractor.eval()
 
             results = []
-            for image, _, _ in val_loader:
+            for (image, _, _) in tqdm(val_loader):
                 feature_extraction = self.feature_extractor(image)
                 
                 pred_boxes = np.asarray(feature_extraction['bounding_boxes']).squeeze()
@@ -235,7 +236,7 @@ class HybridDLModel(nn.Module):
                                 classification loss
         """
         features = []
-        for image, target in zip(x, y):
+        for (image, target) in tqdm(zip(x, y)):
             pred_boxes = image['boxes'].detach().cpu().numpy()
             feature_map = image['labels'].detach().cpu().numpy()
 

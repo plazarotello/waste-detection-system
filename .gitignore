@@ -11,6 +11,7 @@ raw-datasets/**/*.heic
 raw-datasets/**/*.HEIC
 raw-datasets/**/*.json
 tensorboard_logs
+neptune.ai_logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
