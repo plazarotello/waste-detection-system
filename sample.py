@@ -78,8 +78,8 @@ print('TRAIN')
 main.train(
 	train_dataset=resortit_train_sample, 
 	val_dataset=resortit_val_sample, 
-	name='fasterrcnn-resortit', 
-    config=base.MODELS_DIR/'faster-r-cnn-pretrain-tll1.json', 
+	name='fasterrcnn-resortit-sample', 
+    config=base.MODELS_DIR/'faster-r-cnn-sample.json', 
 	num_classes=2, 
 	tll=1, 
 	resortit_zw=0,
