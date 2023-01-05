@@ -34,8 +34,7 @@ class WasteDetectionModule(pl.LightningModule):
     """
     def __init__(self, model : Union[FasterRCNN, FCOS, RetinaNet, SSD], 
                 train_dataset : DataFrame, val_dataset : Union[DataFrame, None],
-                batch_size : int, lr : float, monitor_metric : str, 
-                iou_threshold : float = 0.5) -> None:
+                batch_size : int, lr : float, monitor_metric : str) -> None:
         """Initializes the ``WasteDetectionModule``
 
         Args:
@@ -45,7 +44,6 @@ class WasteDetectionModule(pl.LightningModule):
             batch_size (int): batch size (split in 75/25 for training-validating)
             lr (float): initial learning rate
             monitor_metric (str): metric to use in optimizers
-            iou_threshold (float, optional): IoU threshold. Defaults to 0.5.
         """
         super().__init__()
 
@@ -71,11 +69,6 @@ class WasteDetectionModule(pl.LightningModule):
         # Metric
         self.metric_to_monitor = monitor_metric
 
-        # IoU threshold
-        self.iou_threshold = iou_threshold
-        # Score threshold
-        self.score_threshold = 0.5
-
         # Save hyperparameters
         self.hparams['model'] = self.model
         self.hparams['train_batch_size'] = self.train_batch_size
@@ -85,7 +78,6 @@ class WasteDetectionModule(pl.LightningModule):
 
 
     def forward(self, x):
-        self.model.eval()
         return self.model(x)
     
 
@@ -160,8 +152,11 @@ class WasteDetectionModule(pl.LightningModule):
         self.log("Test_metrics", computed_map)
 
         return computed_map
+    
 
-
+    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
+        x, y, img_path = batch
+        return self.model(x)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.model.parameters(), 
@@ -224,7 +219,7 @@ def get_dataloader(data : DataFrame, batch_size : int, shuffle : bool = True
     Returns:
         DataLoader[WasteDetectionDataset]: dataloader
     """
-    mapping = { base.CATS_PAPEL : 1, base.CATS_PLASTICO : 2}
+    mapping = base.CATEGORY2NUMBER
     dataset = WasteDetectionDataset(data=data, mapping=mapping)
     return DataLoader(dataset=dataset, batch_size=batch_size, pin_memory=True,
         shuffle=shuffle, num_workers=0, collate_fn=collate_double)  # type: ignore

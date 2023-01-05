@@ -263,8 +263,10 @@ def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : boo
     new_path = path_part/Path(f'{prefix}-{current_path.stem}.jpg')
     img = Image.open(current_path)
     img = img.convert('RGB')
+    top, bottom, left, right = 0, 0, 0, 0
     if resize:
-        img = resize_with_pad(img, (base.IMG_HEIGHT, base.IMG_WIDTH))
+        (img, top, bottom, left, right) = resize_with_pad(img, 
+            (base.IMG_HEIGHT, base.IMG_WIDTH))
     img.save(new_path, 'jpeg')
     bbox = (0, 0, 0, 0)
     if labelled:
@@ -272,10 +274,12 @@ def batch_conversion_to_jpg(row : pd.Series, resize: bool = True, labelled : boo
                             row['width'], row['height'])
     row['width'] = base.IMG_WIDTH
     row['height'] = base.IMG_HEIGHT
+    real_width = base.IMG_WIDTH - left - right
+    real_height = base.IMG_HEIGHT - top - bottom
     if labelled:
-        bbox = yolo2coco(bbox[0], bbox[1], bbox[2], bbox[3], row['width'], row['height'])
-        row['bbox-x'] = bbox[0]
-        row['bbox-y'] = bbox[1]
+        bbox = yolo2coco(bbox[0], bbox[1], bbox[2], bbox[3], real_width, real_height)
+        row['bbox-x'] = bbox[0] + left
+        row['bbox-y'] = bbox[1] + top
         row['bbox-w'] = bbox[2]
         row['bbox-h'] = bbox[3]
     row.name = new_path.name
@@ -305,7 +309,7 @@ def resize_with_pad(image : Any, new_shape: Tuple[int, int],
     top, bottom = delta_h//2, delta_h-(delta_h//2)
     left, right = delta_w//2, delta_w-(delta_w//2)
     image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=padding_color)
-    return Image.fromarray(image)
+    return Image.fromarray(image), top, bottom, left, right
 
 def clean_datasets():
     """Removes the different folders for storing the different types of datasets

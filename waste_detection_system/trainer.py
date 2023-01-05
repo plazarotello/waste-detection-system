@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import shutil
+from time import process_time
 from lightning import Trainer
 from lightning.lite.utilities.seed import seed_everything
 from lightning.pytorch.callbacks import (
@@ -301,6 +302,42 @@ def test(module : WasteDetectionModule, project : str, name : str,
     results = trainer.test(model=module, dataloaders=dataloader)
     tensorboad_logger.finalize('finished')
     return results
+
+
+def benchmark_prediction(module : WasteDetectionModule, dataset : DataFrame) -> Tuple[float, Any]:
+    """Benchmarks the prediction time for the dataset in the given trainer
+
+    Args:
+        module (WasteDetectionModule): trainer to test
+        dataset (DataFrame): test dataset
+
+    Returns:
+        Tuple[float, Any]: averaged prediction time in milliseconds and actual predictions
+    """
+    dataloader = waste_detection_module.get_dataloader(
+        data=dataset,
+        batch_size=1,
+        shuffle=False
+        )
+
+    if base.USE_GPU:
+        trainer = Trainer(
+            gpus=base.GPU,
+            accelerator='gpu',
+            auto_lr_find=False,
+            auto_scale_batch_size=False
+        )
+    else:
+        trainer = Trainer(
+            gpus=base.GPU,
+            auto_lr_find=False,
+            auto_scale_batch_size=False
+        )
+
+    start_time = process_time()
+    results = trainer.predict(model=module, dataloaders=dataloader)
+    end_time = process_time()
+    return ((end_time - start_time)*3600/len(dataloader), results)
 
 
 def save_best_model(checkpoint_path: pathlib.Path, save_directory: pathlib.Path):

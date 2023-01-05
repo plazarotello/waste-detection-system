@@ -50,8 +50,8 @@ IMG_HEIGHT = 640
 """int: pixels of height for resizing images
 """
 
-AVAILABLE_MODELS = Enum('Models', 'FASTERRCNN FCOS RETINANET SSD')
-"""enum: available models: ``FasterRCNN``, ``FCOS``, ``RetinaNet``, ``SSD``
+AVAILABLE_MODELS = Enum('Models', 'FASTERRCNN FCOS RETINANET SSD MLP_FRCNN MLP_SSD')
+"""enum: available models: ``FasterRCNN``, ``FCOS``, ``RetinaNet``, ``SSD``, ``MLP_FRCNN``, ``MLP_SSD``
 """
 
 AVAILABLE_CLASSIFIERS = Enum('Classifiers', 'SVM KNN')
@@ -70,7 +70,9 @@ def get_project_name(model : AVAILABLE_MODELS, resortit_zw : int) -> str:
         AVAILABLE_MODELS.FASTERRCNN : 'faster-r-cnn',
         AVAILABLE_MODELS.SSD : 'ssd',
         AVAILABLE_MODELS.FCOS : 'fcos',
-        AVAILABLE_MODELS.RETINANET : 'retinanet'
+        AVAILABLE_MODELS.RETINANET : 'retinanet',
+        AVAILABLE_MODELS.MLP_FRCNN : 'mlp-faster-r-cnn',
+        AVAILABLE_MODELS.MLP_SSD : 'mlp-ssd'
     }
     dataset_to_project = {
         0 : 'resortit',
@@ -202,6 +204,12 @@ CATS_ORGANICO = 'ORGANICO'
 CATS_VIDRIO = 'VIDRIO'
 CATS_OTROS = 'OTROS'
 
+CATEGORY2NUMBER = { CATS_PAPEL : 1, CATS_PLASTICO : 2}
+"""Dict: transforms a given category to a numeric label
+"""
+NUMBER2CATEGORY = {1 : CATS_PAPEL, 2 : CATS_PLASTICO}
+"""Dict: transforms a numeric label to a string category
+"""
 # -----------------------------------------------------------------------------
 
 COLOR_CATS = {

@@ -1,0 +1,6 @@
+{
+    "epochs": 30,
+    "lr": 9.332543007969914e-07,
+    "batch_size": 32,
+    "checkpoints": "./models"
+}

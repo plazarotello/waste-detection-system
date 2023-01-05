@@ -17,6 +17,11 @@ Training scripts
     the Deep Learning neural network based object detection model and
     the traditional Machine Learning classifier, respectively.
 
+Testing scripts
+    The ``test()`` and ``benchmark()`` functions are used to test the
+    Deep Learning neural network based object detection model, giving 
+    the test mAP and the average milliseconds per processed image
+
 Loading/saving weights
     The weights loading is managed by ``load_weights_from_checkpoint()``,
     which accepts both the .pt model weights and .ckpt checkpoint from
@@ -28,6 +33,7 @@ Loading/saving weights
 """
 
 from pathlib import Path
+from random import randint
 import json
 import os
 import traceback
@@ -40,6 +46,7 @@ import torch
 from waste_detection_system import shared_data as base
 from waste_detection_system import models
 from waste_detection_system import trainer
+from waste_detection_system import utils
 from waste_detection_system.waste_detection_module import WasteDetectionModule
 from waste_detection_system.feature_extractor import HybridDLModel
 
@@ -318,3 +325,68 @@ def test(checkpoint_path : Union[str, Path], selected_model : base.AVAILABLE_MOD
                         dataset=test_dataset
                     )
     
+
+def benchmark(checkpoint_path : Union[str, Path], test_dataset : pd.DataFrame) -> float:
+    """Predicts the given dataset against the model in the checkpoint, calculating the 
+    process time spent in each prediction. Prints the predicted vs real annotations of a
+    random image of the dataset.
+
+    Args:
+        checkpoint_path (Union[str, Path]): path to the checkpoint model
+        test_dataset (pd.DataFrame): dataset to test
+
+    Returns:
+        float: averaged prediction time in milliseconds
+    """
+    module = WasteDetectionModule.load_from_checkpoint(
+        checkpoint_path=checkpoint_path, 
+        strict=False,
+        train_dataset=pd.DataFrame({}),
+        val_dataset=None
+        )
+    (average_ms, predictions) = trainer.benchmark_prediction(
+                                    module=module,
+                                    dataset=test_dataset
+                                )
+    print(f'Tiempo medio empleado en detectar residuos en una imagen: ',
+          f'{round(average_ms, 2)} ms ({int(average_ms/60.0)} FPS)')
+    
+    mapping = base.NUMBER2CATEGORY
+    random_index = randint(0, len(predictions)+1)
+
+    image_predictions = predictions[random_index][0]
+    selected_image = test_dataset.iloc[[random_index]]
+
+    predictions_dict = {
+        'name': [], 'path': [], 'width': [], 'height': [], 'type': [], 'label': [], 'bbox-x': [], 'bbox-y': [],
+        'bbox-w': [], 'bbox-h': [], 'dataset': []
+    }
+    for box, label_no in zip(image_predictions['boxes'].cpu().detach().numpy(), 
+                            image_predictions['labels'].cpu().detach().numpy()):
+        label = mapping[label_no]
+        box = utils.pascal2coco(box[0], box[1], box[2], box[3])
+        predictions_dict['name'].append(selected_image['name'].array[0])
+        predictions_dict['path'].append(selected_image['path'].array[0])
+        predictions_dict['width'].append(selected_image['width'].array[0])
+        predictions_dict['height'].append(selected_image['height'].array[0])
+        predictions_dict['type'].append('test')
+        predictions_dict['label'].append(label)
+        predictions_dict['bbox-x'].append(box[0])
+        predictions_dict['bbox-y'].append(box[1])
+        predictions_dict['bbox-w'].append(box[2])
+        predictions_dict['bbox-h'].append(box[3])
+        predictions_dict['dataset'].append(selected_image['dataset'].array[0])
+
+    predictions_df = pd.DataFrame.from_dict(predictions_dict)
+    real_annotations = test_dataset[test_dataset.path == selected_image['path'].array[0]]
+
+    prediction_img = utils.plot_image_with_annotations(image=selected_image['path'].array[0], # type: ignore
+                                                        annotations=predictions_df,
+                                                        plot=False)
+    real_img = utils.plot_image_with_annotations(image=selected_image['path'].array[0], # type: ignore
+                                                annotations=real_annotations,
+                                                plot=False)
+    utils.show([prediction_img, real_img], # type: ignore
+                figsize=(10, 5), 
+                title='Predicciones versus Anotaciones reales')
+    return average_ms
