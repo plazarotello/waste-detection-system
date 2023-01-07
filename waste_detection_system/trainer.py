@@ -337,7 +337,7 @@ def benchmark_prediction(module : WasteDetectionModule, dataset : DataFrame) -> 
     start_time = process_time()
     results = trainer.predict(model=module, dataloaders=dataloader)
     end_time = process_time()
-    return ((end_time - start_time)*3600/len(dataloader), results)
+    return (len(dataloader)/(end_time - start_time), results)
 
 
 def save_best_model(checkpoint_path: pathlib.Path, save_directory: pathlib.Path):
