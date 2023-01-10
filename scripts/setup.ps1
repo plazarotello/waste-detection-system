@@ -18,6 +18,8 @@ pip install jupyter_contrib_nbextensions
 pip install sphinx sphinx_rtd_theme
 pip install pybboxes
 pip install tensorboard
+pip install onnx
+pip install onnxruntime-gpu
 jupyter contrib nbextension install
 
 Write-Output "Enviro recreado. Instalando ipykernel..."

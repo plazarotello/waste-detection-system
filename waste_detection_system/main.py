@@ -349,7 +349,7 @@ def benchmark(checkpoint_path : Union[str, Path], test_dataset : pd.DataFrame) -
                                     dataset=test_dataset
                                 )
     print(f'Tiempo medio empleado en detectar residuos en una imagen: ',
-          f'{round(average_ms, 2)} ms ({int(average_ms/60.0)} FPS)')
+          f'{round(average_ms, 2)} ms ({int(1000.0/average_ms)} FPS)')
     
     mapping = base.NUMBER2CATEGORY
     random_index = randint(0, len(predictions)+1)
@@ -390,3 +390,30 @@ def benchmark(checkpoint_path : Union[str, Path], test_dataset : pd.DataFrame) -
                 figsize=(10, 5), 
                 title='Predicciones versus Anotaciones reales')
     return average_ms
+
+
+def benchmark_optimized(onnx_path : Union[str, Path], test_dataset : pd.DataFrame):
+    """Predicts the given dataset against the ONNX model in the file path, calculating the 
+    process time spent in each prediction.
+
+    Args:
+        onnx_path (Union[str, Path]): path to the ONNX model
+        test_dataset (pd.DataFrame): test dataset
+    """
+    average_ms = trainer.benchmark_optimized(onnx_path, test_dataset)
+    print(f'Tiempo medio empleado en detectar residuos en una imagen (optimizado): ',
+          f'{round(average_ms, 2)} ms ({int(1000.0/average_ms)} FPS)')
+
+
+def optimize_model_for_inference(checkpoint_path : Union[str, Path], 
+                                sample_dataset : pd.DataFrame):
+    """TODO
+
+    Args:
+        checkpoint_path (Union[str, Path]): _description_
+        sample_dataset (pd.DataFrame): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    return trainer.optimize_model(Path(checkpoint_path), sample_dataset)

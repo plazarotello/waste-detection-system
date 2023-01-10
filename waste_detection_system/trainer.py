@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import shutil
-from time import process_time
+from time import time
 from lightning import Trainer
 from lightning.lite.utilities.seed import seed_everything
 from lightning.pytorch.callbacks import (
@@ -13,6 +13,10 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from torch import Tensor
 from torchvision.models.detection import  FasterRCNN, FCOS, RetinaNet
 from torchvision.models.detection.ssd import SSD
+
+import torch.onnx
+import onnx
+import onnxruntime
 
 from pandas import DataFrame
 from pathlib import Path
@@ -312,7 +316,7 @@ def benchmark_prediction(module : WasteDetectionModule, dataset : DataFrame) -> 
         dataset (DataFrame): test dataset
 
     Returns:
-        Tuple[float, Any]: averaged prediction time in milliseconds and actual predictions
+        Tuple[float, Any]: averaged prediction time in milliseconds per image and actual predictions
     """
     dataloader = waste_detection_module.get_dataloader(
         data=dataset,
@@ -325,19 +329,106 @@ def benchmark_prediction(module : WasteDetectionModule, dataset : DataFrame) -> 
             gpus=base.GPU,
             accelerator='gpu',
             auto_lr_find=False,
-            auto_scale_batch_size=False
+            auto_scale_batch_size=False,
+            benchmark=True
         )
     else:
         trainer = Trainer(
             gpus=base.GPU,
             auto_lr_find=False,
-            auto_scale_batch_size=False
+            auto_scale_batch_size=False,
+            benchmark=True
         )
 
-    start_time = process_time()
+    start_time = time()
+    for _ in range(100):
+        results = trainer.predict(model=module, dataloaders=dataloader)
+    end_time = time()
     results = trainer.predict(model=module, dataloaders=dataloader)
-    end_time = process_time()
-    return (len(dataloader)/(end_time - start_time), results)
+    return ((end_time - start_time)*3600/(100*len(dataloader)), results)
+
+
+def benchmark_optimized(onnx_path : Union[str, Path], test_dataset : DataFrame):
+    """Quantizes the inference time of the optimized (ONNX) model on the test dataset
+
+    Args:
+        onnx_path (Union[str, Path]): path to the ONNX model
+        test_dataset (DataFrame): test dataset
+
+    Returns:
+        float: averaged prediction time in milliseconds per image
+    """
+
+    def to_numpy(tensor_list):
+        return [tensor.detach().cpu().numpy() if 
+                tensor.requires_grad else tensor.cpu().numpy() for 
+                tensor in tensor_list]
+
+    # onnx session
+    so = onnxruntime.SessionOptions()
+    so.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+    so.intra_op_num_threads=1
+    ort_session = onnxruntime.InferenceSession(onnx_path, so, 
+        providers=[
+            'CUDAExecutionProvider',
+            'CPUExecutionProvider'
+        ])
+
+    test_dataloader = waste_detection_module.get_dataloader(
+        data=test_dataset,
+        batch_size=1,
+        shuffle=False
+        )
+    
+    start_time = time()
+    for _ in range(100):
+        for (_, (x, y, _)) in enumerate(test_dataloader):
+            ort_outs = ort_session.run(output_names=['output'], input_feed={'input': to_numpy(x[0])})
+    end_time = time()
+    return (end_time - start_time)*3600/(len(test_dataloader)*100)
+
+
+def optimize_model(checkpoint_path: pathlib.Path, sample_input: DataFrame) -> pathlib.Path:
+    """Translates the pytorch model to ONNX format
+
+    Args:
+        checkpoint_path (pathlib.Path): path to the pytorch checkpoint model (.ckpt)
+        sample_input (DataFrame): sample input (train or validation dataset)
+
+    Returns:
+        pathlib.Path: path to the ONNX model
+    """
+    module = WasteDetectionModule.load_from_checkpoint(
+        checkpoint_path=checkpoint_path, 
+        strict=False,
+        train_dataset=DataFrame({}),
+        val_dataset=None
+        )
+    sample_dataloader = waste_detection_module.get_dataloader(
+        data=sample_input,
+        batch_size=1,
+        shuffle=False
+        )
+    
+    x, y, _ = next(iter(sample_dataloader))
+    sample_input_batch = x
+
+    module.eval()
+    onnx_path = checkpoint_path.parent / str(checkpoint_path.stem + '.onnx')
+
+    torch.onnx.export(
+        model=module,
+        args=sample_input_batch,
+        f=onnx_path,
+        export_params=True,
+        do_constant_folding=True,
+        input_names=['input'],
+        output_names=['output']
+        )
+    
+    onnx_model = onnx.load(str(onnx_path))
+    onnx.checker.check_model(onnx_model) # type:ignore
+    return onnx_path
 
 
 def save_best_model(checkpoint_path: pathlib.Path, save_directory: pathlib.Path):
