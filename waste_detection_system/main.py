@@ -407,13 +407,13 @@ def benchmark_optimized(onnx_path : Union[str, Path], test_dataset : pd.DataFram
 
 def optimize_model_for_inference(checkpoint_path : Union[str, Path], 
                                 sample_dataset : pd.DataFrame):
-    """TODO
+    """Transforms the model checkpoint to ONNX format
 
     Args:
-        checkpoint_path (Union[str, Path]): _description_
-        sample_dataset (pd.DataFrame): _description_
+        checkpoint_path (Union[str, Path]): path to the model checkpoint (.ckpt)
+        sample_dataset (pd.DataFrame): sample input (train or validation dataset)
 
     Returns:
-        _type_: _description_
+        pathlib.Path: path to the ONNX model
     """
     return trainer.optimize_model(Path(checkpoint_path), sample_dataset)
